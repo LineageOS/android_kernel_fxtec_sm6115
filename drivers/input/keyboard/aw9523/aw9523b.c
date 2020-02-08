@@ -146,7 +146,7 @@ static const unsigned short  key_array[Y_NUM][X_NUM] = {
 	{ 0xFFFF,        KEY_J,         KEY_N,          KEY_7,        KEY_UP,        KEY_ENTER,  KEY_U,     KEY_DOT       },
 	{ KEY_3,         KEY_D,         KEY_X,          KEY_COMMA,    KEY_O,         KEY_9,      KEY_E,     KEY_K           },
 	{ KEY_LEFT,      KEY_H,         KEY_B,          KEY_6,        KEY_RIGHT,     KEY_DELETE, KEY_Y,     KEY_SLASH         },
-	{ KEY_SYM,       KEY_S,         KEY_Z,          KEY_HOMEPAGE, KEY_LEFTBRACE, KEY_MINUS,  KEY_W,     KEY_SEMICOLON           },
+	{ KEY_RIGHTALT,  KEY_S,         KEY_Z,          KEY_HOMEPAGE, KEY_LEFTBRACE, KEY_MINUS,  KEY_W,     KEY_SEMICOLON           },
 	{ KEY_BACKSPACE, KEY_F,         KEY_C,          0xFFFF,       KEY_RIGHTBRACE,KEY_EQUAL,  KEY_R,     KEY_APOSTROPHE  },
 	{ KEY_CAPSLOCK,  KEY_A,         KEY_GRAVE,      KEY_DOWN,     KEY_P,         KEY_0,      KEY_Q,     KEY_L           },
 	{ KEY_SPACE,     KEY_G,         KEY_V,          KEY_M,        KEY_I,         KEY_8,      KEY_T,     KEY_5           },
