@@ -23,6 +23,8 @@
  */
 #define TOPOLOGY_SET_LEN 3
 #define MAX_TOPOLOGY 5
+static  unsigned int lcd_vcc_3v3_gpio=0xFFFF;//by eric.wang
+int power_on_state=1;
 
 #define DSI_PANEL_DEFAULT_LABEL  "Default dsi panel"
 
@@ -446,10 +448,28 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 	return rc;
 }
 
+void  set_lcd_vcc_3v3_gpio(int enable){
+		static int count=0;
+		//pr_err("set_lcd_vcc_3v3_gpio by eric.wang\n");
+		if(enable>0){
+				//mdelay(10);
+			if(count==0){
+				gpio_direction_output(lcd_vcc_3v3_gpio, 1);//bl enalbe
+				count=1;
+				pr_err("set_lcd_vcc_3v3_gpio:1 by eric.wang\n");
+			}
+		}else{
+				gpio_direction_output(lcd_vcc_3v3_gpio, 0);//bl disalbe
+				count=0;
+				pr_err("set_lcd_vcc_3v3_gpio:0 by eric.wang\n");
+		}
+}	 
+EXPORT_SYMBOL(set_lcd_vcc_3v3_gpio);//by eric.wang
 
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
+	//DSI_ERR("[%s] dsi_panel_power_on\n",panel->name);
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -485,12 +505,15 @@ error_disable_vregs:
 	(void)dsi_pwr_enable_regulator(&panel->power_info, false);
 
 exit:
+	power_on_state=1;
+	pr_err("dsi_panel_power_on by eric.wang\n");
 	return rc;
 }
 
 static int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
+	DSI_ERR("[%s] dsi_panel_power_off\n",panel->name);
 
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
@@ -519,7 +542,8 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
 				panel->name, rc);
-
+	power_on_state=0;
+	pr_err("dsi_panel_power_off by eric.wang\n");
 	return rc;
 }
 static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
@@ -657,8 +681,16 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
 {
 	int rc = 0;
+	static int old_bkl = 0;
 	struct mipi_dsi_device *dsi;
 	struct dsi_backlight_config *bl;
+	//DSI_ERR("----------update dcs backlight:%d,by eric.wang------\n", bl_lvl);
+	if(bl_lvl==0&&old_bkl>0){
+		set_lcd_vcc_3v3_gpio(0);
+	}else{
+		//set_lcd_vcc_3v3_gpio(1);
+	}
+	old_bkl = bl_lvl;//by eric.wang
 
 	if (!panel || (bl_lvl > 0xffff)) {
 		DSI_ERR("invalid params\n");
@@ -2266,6 +2298,7 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 				 panel->name, rc);
 		}
 	}
+	lcd_vcc_3v3_gpio=panel->reset_config.disp_en_gpio;//by eric.wang
 
 	panel->reset_config.lcd_mode_sel_gpio = utils->get_named_gpio(
 		utils->data, mode_set_gpio_name, 0);
