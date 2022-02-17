@@ -427,6 +427,7 @@ static void aw9523b_work_func(struct work_struct *work)
 		state[i] = ~aw9523b_get_P0_value();
 	}
 
+		aw9523b_write_reg(0x30,0x38);
 	// Scan the matrix again to verify there was no state change during the scan, as this could mess with the anti-ghosting.
 	for (i = 0; i < Y_NUM; i++) {
 		aw9523b_write_reg(CONFIG_PORT1, ~(1 << i));
