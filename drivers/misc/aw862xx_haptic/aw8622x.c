@@ -931,7 +931,7 @@ static int aw8622x_haptic_ram_config(struct aw8622x *aw8622x, int duration)
 
 	if ((duration > 0) && (duration <
 				aw8622x->dts_info.duration_time[0])) {
-		wavseq = 3;	/*3*/
+		wavseq = 2;	/*3*/
 		wavloop = 0;
 	} else if ((duration >= aw8622x->dts_info.duration_time[0]) &&
 		(duration < aw8622x->dts_info.duration_time[1])) {
