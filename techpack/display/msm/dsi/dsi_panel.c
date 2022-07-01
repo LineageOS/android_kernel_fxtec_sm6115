@@ -686,6 +686,11 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	struct dsi_backlight_config *bl;
 	//DSI_ERR("----------update dcs backlight:%d,by eric.wang------\n", bl_lvl);
 	if(bl_lvl==0&&old_bkl>0){
+	
+		if (gpio_is_valid(panel->reset_config.reset_gpio) &&
+				gpio_get_value(panel->reset_config.reset_gpio))
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+
 		set_lcd_vcc_3v3_gpio(0);
 	}else{
 		//set_lcd_vcc_3v3_gpio(1);

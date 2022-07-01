@@ -21,6 +21,23 @@
 #include <linux/property.h>
 #include <linux/slab.h>
 
+
+#if defined(CONFIG_DRM_PANEL)
+#include <drm/drm_panel.h>
+#elif defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
+
+
+#if defined(CONFIG_DRM_PANEL)
+static struct drm_panel *active_panel;
+static struct notifier_block g_leds_gpio_notifier;
+static void gpio_led_set(struct led_classdev *led_cdev,enum led_brightness value);
+static u8 g_early_suspend = 0;
+struct gpio_leds_priv *g_gpio_light_priv = NULL;
+#endif
+
 struct gpio_led_data {
 	struct led_classdev cdev;
 	struct gpio_desc *gpiod;
@@ -28,6 +45,172 @@ struct gpio_led_data {
 	u8 blinking;
 	gpio_blink_set_t platform_gpio_blink_set;
 };
+
+struct gpio_leds_priv {
+	int num_leds;
+	struct gpio_led_data leds[];
+};
+
+#if defined(CONFIG_DRM_PANEL)
+static u8 gpio_light_get_lcd_status(void)
+{
+	return g_early_suspend;
+}
+
+static int light_check_dt(struct device_node *np)
+{
+    int i;
+    int count;
+    struct device_node *node;
+    struct drm_panel *panel;
+
+    count = of_count_phandle_with_args(np, "panel", NULL);
+    if (count <= 0)
+        return 0;
+
+    for (i = 0; i < count; i++)
+    {
+        node = of_parse_phandle(np, "panel", i);
+        panel = of_drm_find_panel(node);
+        of_node_put(node);
+        if (!IS_ERR(panel))
+        {
+            pr_err("hjc++++ %s  [%d]  got panel\n",__func__,__LINE__);
+            active_panel = panel;
+            return 0;
+        }
+    }
+
+    pr_err("hjc++++ %s  [%d]  not get panel\n",__func__,__LINE__);
+    return -ENODEV;
+}
+
+static int light_check_default_panel(struct device_node *dt, const char *prop)
+{
+	const char **active_tp = NULL;
+	int count, tmp, score = 0;
+	const char *active;
+	int ret, i;
+
+	count = of_property_count_strings(dt->parent, prop);
+	if (count <= 0 || count > 3)
+		return -ENODEV;
+
+	active_tp = kcalloc(count, sizeof(char *),  GFP_KERNEL);
+	if (!active_tp) {
+		pr_err("FTS alloc failed\n");
+		return -ENOMEM;
+	}
+
+	ret = of_property_read_string_array(dt->parent, prop,
+			active_tp, count);
+	if (ret < 0) {
+		pr_err("fail to read %s %d\n", prop, ret);
+		ret = -ENODEV;
+		goto out;
+	}
+
+	for (i = 0; i < count; i++) {
+		active = active_tp[i];
+		if (active != NULL) {
+			tmp = of_device_is_compatible(dt, active);
+			if (tmp > 0)
+				score++;
+		}
+	}
+
+	if (score <= 0) {
+		pr_err("not match this driver\n");
+		ret = -ENODEV;
+		goto out;
+	}
+	ret = 0;
+out:
+	kfree(active_tp);
+	return ret;
+}
+
+static void gpio_light_suspend(void)
+{
+    struct gpio_leds_priv *priv = g_gpio_light_priv;
+    int i;
+
+    if( priv == NULL)
+        return;
+
+    for (i = 0; i < priv->num_leds; i++)
+    {
+        struct gpio_led_data *led = &priv->leds[i];
+        gpio_led_set(&led->cdev, LED_OFF);
+    }
+}
+
+static void gpio_light_resume(void)
+{
+    struct gpio_leds_priv *priv = g_gpio_light_priv;
+    int i;
+
+    if( priv == NULL)
+        return;
+
+    for (i = 0; i < priv->num_leds; i++)
+    {
+        struct gpio_led_data *led = &priv->leds[i];
+
+        pr_err("hjc++++++ %s [%d] led_cdev->brightness = %d \n", __func__, __LINE__,led->cdev.brightness);
+        if(led->cdev.brightness)
+            gpio_led_set(&led->cdev, 1);
+    }
+}
+
+static int light_drm_notifier_callback(struct notifier_block *self,unsigned long event, void *data)
+{
+    struct drm_panel_notifier *evdata = data;
+    int *blank;
+
+    if (!evdata || !evdata->data  )
+    return 0;
+
+    blank = evdata->data;
+
+    if (event == DRM_PANEL_EARLY_EVENT_BLANK)
+    {
+        if (*blank == DRM_PANEL_BLANK_POWERDOWN)
+        {
+            gpio_light_suspend();
+            g_early_suspend = 1;
+	    }
+    }
+    else if (event == DRM_PANEL_EVENT_BLANK)
+    {
+        if (*blank == DRM_PANEL_BLANK_UNBLANK)
+        {
+            g_early_suspend = 0;
+            gpio_light_resume();
+        }
+    }
+
+    return 0;
+}
+
+static int light_register_powermanger(void)
+{
+    g_leds_gpio_notifier.notifier_call = light_drm_notifier_callback;
+    if (active_panel && drm_panel_notifier_register(active_panel,&g_leds_gpio_notifier) < 0) {
+        pr_err("register notifier failed!\n");
+    }
+
+    return 0;
+}
+
+static int light_unregister_powermanger(void)
+{
+    if (active_panel)
+        drm_panel_notifier_unregister(active_panel, &g_leds_gpio_notifier);
+
+    return 0;
+}
+#endif
 
 static inline struct gpio_led_data *
 			cdev_to_gpio_led_data(struct led_classdev *led_cdev)
@@ -40,6 +223,18 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 {
 	struct gpio_led_data *led_dat = cdev_to_gpio_led_data(led_cdev);
 	int level;
+
+	#if defined(CONFIG_DRM_PANEL)
+    //显示屏不亮保持灯关闭状态
+    if( gpio_light_get_lcd_status() )
+    {
+	    return;
+    }
+    else
+    {
+	    level = led_cdev->brightness;
+    }
+	#endif
 
 	if (value == LED_OFF)
 		level = 0;
@@ -144,11 +339,6 @@ static int create_gpio_led(const struct gpio_led *template,
 	return devm_of_led_classdev_register(parent, np, &led_dat->cdev);
 }
 
-struct gpio_leds_priv {
-	int num_leds;
-	struct gpio_led_data leds[];
-};
-
 static inline int sizeof_gpio_leds_priv(int num_leds)
 {
 	return sizeof(struct gpio_leds_priv) +
@@ -237,6 +427,10 @@ static int gpio_led_probe(struct platform_device *pdev)
 	struct gpio_leds_priv *priv;
 	int i, ret = 0;
 
+    #if defined(CONFIG_DRM)
+    struct device_node *dp = pdev->dev.of_node;
+    #endif
+
 	if (pdata && pdata->num_leds) {
 		priv = devm_kzalloc(&pdev->dev,
 				sizeof_gpio_leds_priv(pdata->num_leds),
@@ -258,15 +452,37 @@ static int gpio_led_probe(struct platform_device *pdev)
 			return PTR_ERR(priv);
 	}
 
-	platform_set_drvdata(pdev, priv);
 
-	return 0;
+
+    #if defined(CONFIG_DRM)
+    if (light_check_dt(dp)) {
+        if (!light_check_default_panel(dp, "qcom,i2c-touch-active"))
+            ret = -EPROBE_DEFER;
+        else
+            ret = -ENODEV;
+
+        return ret;
+    }
+
+    light_register_powermanger();
+    #endif
+
+    platform_set_drvdata(pdev, priv);
+
+	#if defined(CONFIG_DRM)
+    g_gpio_light_priv = priv;
+	#endif
+    return 0;
 }
 
 static void gpio_led_shutdown(struct platform_device *pdev)
 {
 	struct gpio_leds_priv *priv = platform_get_drvdata(pdev);
 	int i;
+
+    #if defined(CONFIG_DRM)
+	light_unregister_powermanger();
+    #endif
 
 	for (i = 0; i < priv->num_leds; i++) {
 		struct gpio_led_data *led = &priv->leds[i];
@@ -285,7 +501,16 @@ static struct platform_driver gpio_led_driver = {
 	},
 };
 
+#if defined(CONFIG_DRM)
+static int __init gpio_light_init(void)
+{
+	return platform_driver_register(&gpio_led_driver);
+}
+
+late_initcall(gpio_light_init);
+#else
 module_platform_driver(gpio_led_driver);
+#endif
 
 MODULE_AUTHOR("Raphael Assenat <raph@8d.com>, Trent Piepho <tpiepho@freescale.com>");
 MODULE_DESCRIPTION("GPIO LED driver");
