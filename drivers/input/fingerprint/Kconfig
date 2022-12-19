@@ -8,6 +8,6 @@
 
 config MICROARRAY_FINGERPRINT
 	tristate "MICROARRAY Fingerprint"
-	default y
+	default n
 	---help---
 	    MICROARRAY Fingerprint chip AFS121 AFS112 AFS83 TEE driver

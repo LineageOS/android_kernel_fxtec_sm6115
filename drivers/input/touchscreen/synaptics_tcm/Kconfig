@@ -3,7 +3,7 @@
 #
 menuconfig TOUCHSCREEN_SYNAPTICS_TCM
 	bool "Synaptics TCM touchscreen"
-	default n
+	default y
 	help
 	  Say Y here if you have a Synaptics TCM touchscreen connected
 	  to your system.
