@@ -1356,4 +1356,6 @@ source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
 source "drivers/input/touchscreen/nt36xxx/Kconfig"
 
+source "drivers/input/touchscreen/gt1x_v1_6_revised/Kconfig"
+
 endif
