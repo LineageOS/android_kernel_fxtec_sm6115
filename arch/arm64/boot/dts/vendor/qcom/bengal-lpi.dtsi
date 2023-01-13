@@ -1928,12 +1928,12 @@
 
 		wsa_mclk_sleep: wsa_mclk_sleep {
 			mux {
-				pins = "gpio18";
+				/*pins = "gpio18";*/
 				function = "func1";
 			};
 
 			config {
-				pins = "gpio18";
+				/*pins = "gpio18";*/
 				drive-strength = <2>;   /* 2 mA */
 				bias-pull-down;
 			};
@@ -1941,12 +1941,12 @@
 
 		wsa_mclk_active: wsa_mclk_active {
 			mux {
-				pins = "gpio18";
+				/*pins = "gpio18";*/
 				function = "func1";
 			};
 
 			config {
-				pins = "gpio18";
+				/*pins = "gpio18";*/
 				drive-strength = <16>;   /* 16 mA */
 				bias-disable;
 				output-high;
