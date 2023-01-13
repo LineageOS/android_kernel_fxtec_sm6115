@@ -76,7 +76,7 @@ include $(DLKM_DIR)/AndroidKernelModule.mk
 endif
 endif
 ###########################################################
-ifeq ($(call is-board-platform-in-list,$(MSMSTEPPE) $(TRINKET) kona sdm660), true)
+ifeq ($(call is-board-platform-in-list,$(MSMSTEPPE) $(TRINKET) kona sdm660 msm8953 msm8937), true)
 ifneq ($(TARGET_BOARD_AUTO),true)
 include $(CLEAR_VARS)
 LOCAL_MODULE              := $(AUDIO_CHIPSET)_pinctrl_wcd.ko
