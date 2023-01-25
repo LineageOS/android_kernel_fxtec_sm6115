@@ -3,7 +3,7 @@
 #include "dsi-panel-nt36525-truly-hd-plus-vid.dtsi"
 #include "dsi-panel-r66451-hd-plus-90hz-video.dtsi"
 #include "dsi-panel-r66451-hd-plus-90hz-cmd.dtsi"
-#include "dsi-panel-sw43404-boe-1080-2160-vid.dtsi"
+#include "dsi-panel-sw43404-amoled-dsc-fhd-plus-cmd.dtsi"
 #include <dt-bindings/clock/mdss-14nm-pll-clk.h>
 
 &soc {
