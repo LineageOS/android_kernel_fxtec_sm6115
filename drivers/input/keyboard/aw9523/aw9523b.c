@@ -142,15 +142,18 @@ static struct aw9523b_data *g_aw9523_data=NULL;
 static struct input_dev *aw9523b_input_dev = NULL;
 static struct i2c_client *g_client = NULL;
 
-static const unsigned short  key_array[Y_NUM][X_NUM] = {
-	{ 0xFFFF,        KEY_J,         KEY_N,          KEY_7,        KEY_UP,        KEY_ENTER,  KEY_U,     KEY_DOT       },
-	{ KEY_3,         KEY_D,         KEY_X,          KEY_COMMA,    KEY_O,         KEY_9,      KEY_E,     KEY_K           },
-	{ KEY_LEFT,      KEY_H,         KEY_B,          KEY_6,        KEY_RIGHT,     KEY_DELETE, KEY_Y,     KEY_SLASH         },
-	{ KEY_RIGHTALT,  KEY_S,         KEY_Z,          KEY_HOMEPAGE, KEY_LEFTBRACE, KEY_MINUS,  KEY_W,     KEY_SEMICOLON           },
-	{ KEY_BACKSPACE, KEY_F,         KEY_C,          0xFFFF,       KEY_RIGHTBRACE,KEY_EQUAL,  KEY_R,     KEY_APOSTROPHE  },
-	{ KEY_CAPSLOCK,  KEY_A,         KEY_GRAVE,      KEY_DOWN,     KEY_P,         KEY_0,      KEY_Q,     KEY_L           },
-	{ KEY_SPACE,     KEY_G,         KEY_V,          KEY_M,        KEY_I,         KEY_8,      KEY_T,     KEY_5           },
-	{ KEY_ESC,       KEY_1,         0xFFFF,         0xFFFF,       KEY_2,         KEY_4,      KEY_TAB,   0xFFFF            }
+static int idea_nr_keys = 0;
+static struct gpio_keys_button *idea_key = NULL;
+
+static u16 key_array[AW9523_NR_KEYS] = {
+	 0xFFFF,        KEY_J,         KEY_N,          KEY_7,        KEY_UP,        KEY_ENTER,  KEY_U,     KEY_DOT,
+	 KEY_3,         KEY_D,         KEY_X,          KEY_COMMA,    KEY_O,         KEY_9,      KEY_E,     KEY_K,
+	 KEY_LEFT,      KEY_H,         KEY_B,          KEY_6,        KEY_RIGHT,     KEY_DELETE, KEY_Y,     KEY_SLASH,
+	 KEY_RIGHTALT,  KEY_S,         KEY_Z,          KEY_HOMEPAGE, KEY_LEFTBRACE, KEY_MINUS,  KEY_W,     KEY_SEMICOLON,
+	 KEY_BACKSPACE, KEY_F,         KEY_C,          0xFFFF,       KEY_RIGHTBRACE,KEY_EQUAL,  KEY_R,     KEY_APOSTROPHE,
+	 KEY_CAPSLOCK,  KEY_A,         KEY_GRAVE,      KEY_DOWN,     KEY_P,         KEY_0,      KEY_Q,     KEY_L,
+	 KEY_SPACE,     KEY_G,         KEY_V,          KEY_M,        KEY_I,         KEY_8,      KEY_T,     KEY_5,
+	 KEY_ESC,       KEY_1,         0xFFFF,         0xFFFF,       KEY_2,         KEY_4,      KEY_TAB,   0xFFFF,
 };
 
 // This macro sets the interval between polls of the key matrix for ghosted keys (in milliseconds).
@@ -448,7 +451,7 @@ static void aw9523b_work_func(struct work_struct *work)
 	// Find changed keys and send keycodes for them.
 	for (i = 0; i < Y_NUM; i++) {
 		for (j = 0; j < X_NUM; j++) {
-			keycode = key_array[i][j];
+			keycode = key_array[Y_NUM * i + j];
 			if (state[i] & (1 << j) && !(down[i] & (1 << j))) { // Keypress.
 				// Check if the key is possibly a ghost.
 				// Talking from the point of view that P1 is the row driver and P0 are columns.
@@ -565,6 +568,69 @@ static ssize_t aw9523b_show_reg(struct device *dev,
     return res;
 }
 
+static ssize_t aw9523b_show_keymap(struct device *dev,
+                struct device_attribute *attr,
+                char *buf)
+{
+        char *ptr = buf;
+        char *end = buf + PAGE_SIZE;
+        int n;
+
+        for (n = 0; n < AW9523_NR_KEYS; ++n) {
+                ptr += snprintf(ptr, (end - ptr), "%d:%04hx:%04hx\n",
+                                n, key_array[n], key_array[n]);
+                                /* n, key_array[n], key_fn_array[n]); */
+        }
+        for (n = 0; n < idea_nr_keys; ++n) {
+                ptr += snprintf(ptr, (end - ptr), "%d:%04hx:%04hx\n",
+                                (n | IDEA_MASK), idea_key[n].code, idea_key[n].code);
+        }
+
+        return (ptr - buf);
+}
+
+static ssize_t aw9523b_store_keymap(struct device *dev,
+                struct device_attribute *attr,
+                const char *buf, size_t count)
+{
+        char keybuf[80];
+        const char *end = buf + count;
+        const char *eol;
+        int key_idx;
+        u16 key_val, key_fn_val;
+
+        while (buf < end) {
+                memset(keybuf, 0, sizeof(keybuf));
+                eol = memchr(buf, '\n', end - buf);
+                if (eol) {
+                        if (eol - buf >= sizeof(keybuf)) {
+                                return -EINVAL;
+                        }
+                        memcpy(keybuf, buf, eol - buf);
+                        buf = eol + 1;
+                }
+                else {
+                        memcpy(keybuf, buf, end - buf);
+                        buf = end;
+                }
+                if (sscanf(keybuf, "%d:%hx:%hx", &key_idx, &key_val, &key_fn_val) != 3) {
+                        return -EINVAL;
+                }
+                if (key_idx < 0 || key_idx >= AW9523_NR_KEYS + idea_nr_keys) {
+                        return -EINVAL;
+                }
+                if (key_idx & IDEA_MASK) {
+                        idea_key[key_idx & ~IDEA_MASK].code = key_val;
+                        /* key_fn_val is discarded for IDEA keys */
+                } else {
+                        key_array[key_idx] = key_val;
+                        /* key_fn_array[key_idx] = key_fn_val; */
+                }
+        }
+
+        return count;
+}
+
 static DEVICE_ATTR(aw9523b_reg, (S_IRUGO | S_IWUSR | S_IWGRP),
             aw9523b_show_reg,
             NULL);
@@ -572,10 +638,16 @@ static DEVICE_ATTR(aw9523b_chip_id, (S_IRUGO | S_IWUSR | S_IWGRP),
             aw9523b_show_chip_id,
             NULL);
 
+static DEVICE_ATTR(keymap, (S_IRUGO | S_IWUSR | S_IWGRP),
+            aw9523b_show_keymap,
+            aw9523b_store_keymap);
 
 static struct attribute *aw9523b_attrs[] = {
+#ifdef AW9523_DEBUG
     &dev_attr_aw9523b_reg.attr,
     &dev_attr_aw9523b_chip_id.attr,
+#endif
+    &dev_attr_keymap.attr,
     NULL
 };
 
@@ -616,8 +688,7 @@ static struct platform_driver aw9523b_pdrv;
 
 static int register_aw9523b_input_dev(struct device *pdev)
 {
-    int i,j;
-    //int r;
+    int key;
 
     AW9523_FUN(f);
 
@@ -637,11 +708,12 @@ static int register_aw9523b_input_dev(struct device *pdev)
 
     __set_bit(EV_KEY, aw9523b_input_dev->evbit);
 
-	for (i=0;i<X_NUM;i++)
-		for (j=0;j<Y_NUM;j++)
-			if (key_array[i][j]!=0xffff)
-				input_set_capability(aw9523b_input_dev, EV_KEY, key_array[i][j]);
-
+    /* We can potentially generate all keys due to remapping */
+    for (key = 1; key < KEY_MAX; ++key) {
+        if (key >= KEY_STYLUS_MIN && key < KEY_STYLUS_MAX)
+                continue;
+        input_set_capability(aw9523b_input_dev, EV_KEY, key);
+    }
 
     aw9523b_input_dev->dev.parent = pdev;
     //r = input_register_device(aw9523b_input_dev);
@@ -1193,11 +1265,11 @@ static int aw9523b_probe(struct i2c_client *client,
         goto deinit_power_exit;
     }
 
- //   err = sysfs_create_group(&client->dev.kobj, &aw9523b_attr_grp);
- //   if (err < 0) {
- //       dev_err(&client->dev, "sys file creation failed.\n");
- //       goto deinit_power_exit;
- //   }
+    err = sysfs_create_group(&client->dev.kobj, &aw9523b_attr_grp);
+    if (err < 0) {
+        dev_err(&client->dev, "sys file creation failed.\n");
+        goto deinit_power_exit;
+    }
 
 
     default_p0_p1_settings();     //io_init
@@ -1985,6 +2057,10 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 
 	pdata->buttons = button;
 	pdata->nbuttons = nbuttons;
+
+        /* Save IDEA key values */
+        idea_key = button;
+        idea_nr_keys = nbuttons;
 
 	pdata->rep = device_property_read_bool(dev, "autorepeat");
 
