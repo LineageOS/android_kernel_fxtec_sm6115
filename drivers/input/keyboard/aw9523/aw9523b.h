@@ -30,7 +30,6 @@
 #define AW9523_TAG                  "[aw9523] "
 
 #define AW9523_ERR(fmt, args...)    printk(KERN_ERR AW9523_TAG"%s %d : "fmt, __FUNCTION__, __LINE__, ##args)
-#define AW9523_DEBUG
 
 #ifdef AW9523_DEBUG
 #define AW9523_FUN(f)               printk(KERN_ERR AW9523_TAG"%s\n", __FUNCTION__)
@@ -65,5 +64,17 @@
 #define IC_ID           (0x10)
 #define CTL             (0x11)
 #define REG_SOFT_RESET  (0x7F)
+
+/*
+ * These keys are reserved for stylus devices.  If they are included in
+ * the input device capabilities, Android will assume that the device
+ * is a stylus, not a keyboard.  So we must avoid them.
+ */
+#define KEY_STYLUS_MIN          BTN_DIGI
+#define KEY_STYLUS_MAX          BTN_WHEEL
+
+#define AW9523_NR_PORTS         8
+#define AW9523_NR_KEYS          (AW9523_NR_PORTS * BITS_PER_BYTE)
+#define IDEA_MASK               0x40 /* 1 << ceil(log2(AW9523_NR_KEYS)) */
 
 #endif

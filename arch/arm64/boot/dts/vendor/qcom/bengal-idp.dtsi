@@ -151,11 +151,11 @@
 		pinctrl-0 = <&idea_gpio_key_active>;
 		pinctrl-1 = <&idea_gpio_key_suspend>;
 
-		alt {
-			label = "alt";
-			gpios = <&tlmm 19 1>;
+		home {
+			label = "home";
+			gpios = <&tlmm 93 1>;
 			linux,input-type = <1>;
-			linux,code = <KEY_LEFTALT>;
+			linux,code = <KEY_LEFTMETA>;
 			debounce-interval = <15>;
 		};
 
@@ -175,25 +175,25 @@
 			debounce-interval = <15>;
 		};
 
-		home {
-			label = "home";
-			gpios = <&tlmm 93 1>;
+		alt {
+			label = "alt";
+			gpios = <&tlmm 19 1>;
 			linux,input-type = <1>;
-			linux,code = <KEY_LEFTMETA>;
-			debounce-interval = <15>;
-		};
-
-		arrow_1 {
-			label = "fn_r";
-			gpios = <&tlmm 112 1>;
-			linux,input-type = <1>;
-			linux,code = <KEY_FN>;
+			linux,code = <KEY_LEFTALT>;
 			debounce-interval = <15>;
 		};
 
 		arrow_2 {
 			label = "fn_l";
 			gpios = <&tlmm 106 1>;
+			linux,input-type = <1>;
+			linux,code = <KEY_FN>;
+			debounce-interval = <15>;
+		};
+
+		arrow_1 {
+			label = "fn_r";
+			gpios = <&tlmm 112 1>;
 			linux,input-type = <1>;
 			linux,code = <KEY_FN>;
 			debounce-interval = <15>;
