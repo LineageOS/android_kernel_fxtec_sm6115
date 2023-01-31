@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34fa37be_24f70004",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16914
+      },
+      "writtenOn": "2023-01-31T18:45:44Z",
+      "side": 1,
+      "message": "PS2 reorders dts to match pro1, making keys 64 to 69 match in keymap files",
+      "revId": "08c2ddf67befd0ec16c8b7ae29684431b03f9e4f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
