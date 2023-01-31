@@ -629,7 +629,7 @@ static int register_aw9523b_input_dev(struct device *pdev)
 	    return -ENOMEM;
     }
 
-    aw9523b_input_dev->name = "Fxtec Pro1";
+    aw9523b_input_dev->name = "Builtin Keyboard";
     aw9523b_input_dev->id.bustype = BUS_I2C;
     aw9523b_input_dev->id.vendor = 0x9523;
     aw9523b_input_dev->id.product = 0x0701;
