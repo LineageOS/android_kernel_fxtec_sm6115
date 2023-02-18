@@ -33,6 +33,24 @@
       "message": "why move this ?",
       "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d270dc0b_2a82c320",
+        "filename": "arch/arm64/boot/dts/vendor/qcom/bengal-idp.dtsi",
+        "patchSetId": 3
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 16914
+      },
+      "writtenOn": "2023-02-18T14:58:22Z",
+      "side": 1,
+      "message": "This change makes the keymap files compatible between pro1 and pro1x. Without it, the six keys listed here are assigned to different key numbers on pro1x.",
+      "parentUuid": "08ee3e21_63742f6d",
+      "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
