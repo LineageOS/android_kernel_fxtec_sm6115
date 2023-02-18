@@ -16,6 +16,23 @@
       "message": "PS3 fixes remapping of the modifier keys (i.e. the IDEA keys w/ dedicated GPIO lines)",
       "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08ee3e21_63742f6d",
+        "filename": "arch/arm64/boot/dts/vendor/qcom/bengal-idp.dtsi",
+        "patchSetId": 3
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 5911
+      },
+      "writtenOn": "2023-02-18T07:58:33Z",
+      "side": 1,
+      "message": "why move this ?",
+      "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
