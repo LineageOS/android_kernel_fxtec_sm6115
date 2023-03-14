@@ -164,7 +164,6 @@ static void mas_set_input(void) {
 //static int mas_ioctl (struct inode *node, struct file *filp, unsigned int cmd, uns igned long arg)
 //this function only supported while the linux kernel version under v2.6.36,while the kernel version under v2.6.36, use this line
 static long mas_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
-    printk("mas_ioctl: cmd=0x%x\n",cmd);
     switch(cmd){
         case TIMEOUT_WAKELOCK:                                                       //延时锁    timeout lock
 #ifdef CONFIG_PM_WAKELOCKS
@@ -320,7 +319,6 @@ static long mas_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
             ret = -EINVAL;
             MALOGW("mas_ioctl no such cmd");
     }
-    printk("mas_ioctl: end.\n");
     return ret;
 }
 
