@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "813f058f_ee21f7d6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16914
+      },
+      "writtenOn": "2023-03-29T23:40:03Z",
+      "side": 1,
+      "message": "Boots, runs OK, and both cameras work :-)",
+      "revId": "885280ce7bcce57b21ba77a901f8d15a893a68ae",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
