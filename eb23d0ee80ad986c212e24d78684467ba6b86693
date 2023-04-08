@@ -51,6 +51,24 @@
       "parentUuid": "08ee3e21_63742f6d",
       "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "425f0c0f_61082af2",
+        "filename": "arch/arm64/boot/dts/vendor/qcom/bengal-idp.dtsi",
+        "patchSetId": 3
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 5911
+      },
+      "writtenOn": "2023-04-08T23:20:14Z",
+      "side": 1,
+      "message": "wouldnt it still be compatible if it were at its original position? trying to avoid artificially bloated diffs",
+      "parentUuid": "d270dc0b_2a82c320",
+      "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
