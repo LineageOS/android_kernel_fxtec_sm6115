@@ -69,6 +69,24 @@
       "parentUuid": "d270dc0b_2a82c320",
       "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a3e49b9_56cfcae6",
+        "filename": "arch/arm64/boot/dts/vendor/qcom/bengal-idp.dtsi",
+        "patchSetId": 3
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 16914
+      },
+      "writtenOn": "2023-04-09T07:26:37Z",
+      "side": 1,
+      "message": "The order of the keys in the dtsi file determines the number the key is assigned. Without moving arrow_1 below arrow_2 it would be assigned key number 68 instead of key number 69, making the kernel keymaps incompatible between the pro1 and pro1x.",
+      "parentUuid": "425f0c0f_61082af2",
+      "revId": "eb23d0ee80ad986c212e24d78684467ba6b86693",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
