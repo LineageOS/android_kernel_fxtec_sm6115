@@ -1,20 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
 #include "cam_sensor_util.h"
 #include "cam_mem_mgr.h"
 #include "cam_res_mgr_api.h"
-
-
-		//add by hzt 2021-7-1 for debug
-//#undef CAM_DBG
-//#define CAM_DBG(fmt,args...) CAM_ERR(fmt,##args)
-
-
 
 #define CAM_SENSOR_PINCTRL_STATE_SLEEP "cam_suspend"
 #define CAM_SENSOR_PINCTRL_STATE_DEFAULT "cam_default"
@@ -376,36 +368,23 @@ static int32_t cam_sensor_handle_continuous_read(
 }
 
 static int cam_sensor_handle_slave_info(
-	struct camera_io_master *io_master,
-	uint32_t *cmd_buf)
+	uint32_t *cmd_buf,
+	struct i2c_settings_array *i2c_reg_settings,
+	struct list_head **list_ptr)
 {
 	int rc = 0;
 	struct cam_cmd_i2c_info *i2c_info = (struct cam_cmd_i2c_info *)cmd_buf;
+	struct i2c_settings_list  *i2c_list;
 
-	if (io_master == NULL || cmd_buf == NULL) {
-		CAM_ERR(CAM_SENSOR, "Invalid args");
-		return -EINVAL;
+	i2c_list =
+		cam_sensor_get_i2c_ptr(i2c_reg_settings, 1);
+	if (!i2c_list || !i2c_list->i2c_settings.reg_setting) {
+		CAM_ERR(CAM_SENSOR, "Failed in allocating mem for list");
+		return -ENOMEM;
 	}
 
-	switch (io_master->master_type) {
-	case CCI_MASTER:
-		io_master->cci_client->sid = (i2c_info->slave_addr >> 1);
-		io_master->cci_client->i2c_freq_mode = i2c_info->i2c_freq_mode;
-		break;
-
-	case I2C_MASTER:
-		io_master->client->addr = i2c_info->slave_addr;
-		break;
-
-	case SPI_MASTER:
-		break;
-
-	default:
-		CAM_ERR(CAM_SENSOR, "Invalid master type: %d",
-			io_master->master_type);
-		rc = -EINVAL;
-		break;
-	}
+	i2c_list->op_code = CAM_SENSOR_I2C_SET_I2C_INFO;
+	i2c_list->slave_info = *i2c_info;
 
 	return rc;
 }
@@ -625,7 +604,7 @@ int cam_sensor_i2c_command_parser(
 					goto end;
 				}
 				rc = cam_sensor_handle_slave_info(
-					io_master, cmd_buf);
+					cmd_buf, i2c_reg_settings, &list);
 				if (rc) {
 					CAM_ERR(CAM_SENSOR,
 					"Handle slave info failed with rc: %d",
@@ -745,7 +724,7 @@ int cam_sensor_util_i2c_apply_setting(
 	switch (i2c_list->op_code) {
 	case CAM_SENSOR_I2C_WRITE_RANDOM: {
 		rc = camera_io_dev_write(io_master_info,
-			&(i2c_list->i2c_settings), false);
+			&(i2c_list->i2c_settings));
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to random write I2C settings: %d",
@@ -756,8 +735,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_SEQ: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings),
-			0, false);
+			io_master_info, &(i2c_list->i2c_settings), 0);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to seq write I2C settings: %d",
@@ -768,8 +746,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_BURST: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings),
-			1, false);
+			io_master_info, &(i2c_list->i2c_settings), 1);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to burst write I2C settings: %d",
@@ -819,6 +796,12 @@ int32_t cam_sensor_i2c_read_data(
 
 	list_for_each_entry(i2c_list,
 		&(i2c_settings->list_head), list) {
+		if (i2c_list->op_code == CAM_SENSOR_I2C_SET_I2C_INFO) {
+			CAM_DBG(CAM_SENSOR,
+				"CAM_SENSOR_I2C_SET_I2C_INFO continue");
+			continue;
+		}
+
 		read_buff = i2c_list->i2c_settings.read_buff;
 		buff_length = i2c_list->i2c_settings.read_buff_len;
 		if ((read_buff == NULL) || (buff_length == 0)) {
@@ -1775,12 +1758,6 @@ int msm_cam_sensor_handle_reg_gpio(int seq_type,
 			[gpio_offset], val);
 	}
 
-	//add by hzt 2021-9-4 for control external gpio
-	//s_ctrl.imx582_avdd18_gpio = of_get_named_gpio(s_ctrl->of_node, "imx582_avdd18,pwr-gpio", 0);
-    //s_ctrl.imx582_avdd28_gpio = of_get_named_gpio(s_ctrl->of_node, "imx582_avdd28,pwr-gpio", 0);
-	//add by hzt 2021-9-4  control external gpio
-
-
 	return 0;
 }
 
@@ -1894,12 +1871,6 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 			"Cannot set shared pin to active state");
 
 	CAM_DBG(CAM_SENSOR, "power setting size: %d", ctrl->power_setting_size);
-
-
-
-
-
-
 
 	for (index = 0; index < ctrl->power_setting_size; index++) {
 		CAM_DBG(CAM_SENSOR, "index: %d", index);
@@ -2059,32 +2030,6 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 				CAM_ERR(CAM_SENSOR, "usr_idx:%d dts_idx:%d",
 					power_setting->seq_val, num_vreg);
 			}
-
-			//add by hzt 2021-9-4 for control external gpio
-			if(power_setting->seq_type==SENSOR_VANA)
-			{
-
-				CAM_DBG(CAM_SENSOR, "before to request imx582_avdd18_gpio:%d,,\n",ctrl->imx582_avdd18_gpio);
-				ret = gpio_request(ctrl->imx582_avdd18_gpio, "imx582_avdd18_gpio");
-				if (ret < 0) {
-					CAM_DBG(CAM_SENSOR, "Failed to request imx582_avdd18_gpio:%d,,\n",ctrl->imx582_avdd18_gpio);
-				}
-				//gpio_set_value_cansleep(ctrl->imx582_avdd18_gpio, 1);
-				gpio_direction_output(ctrl->imx582_avdd18_gpio,1);
-				gpio_free(ctrl->imx582_avdd18_gpio);
-
-                CAM_DBG(CAM_SENSOR, "before to request imx582_avdd28_gpio:%d,,\n",ctrl->imx582_avdd28_gpio);
-				ret = gpio_request(ctrl->imx582_avdd28_gpio, "imx582_avdd28_gpio");
-				if (ret < 0) {
-					CAM_DBG(CAM_SENSOR, "Failed to request imx582_avdd28_gpio:%d,,\n",ctrl->imx582_avdd28_gpio);
-				}
-				//gpio_set_value_cansleep(ctrl->imx582_avdd28_gpio, 1);
-				gpio_direction_output(ctrl->imx582_avdd28_gpio,1);
-				gpio_free(ctrl->imx582_avdd28_gpio);
-			}
-	        //add by hzt 2021-9-4  control external gpio
-
-
 
 			rc = msm_cam_sensor_handle_reg_gpio(
 				power_setting->seq_type,
@@ -2365,30 +2310,6 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 			} else
 				CAM_ERR(CAM_SENSOR,
 					"error in power up/down seq");
-
-
-			//add by hzt 2021-9-4 for control external gpio
-			if(pd->seq_val==SENSOR_VANA)
-			{
-				CAM_DBG(CAM_SENSOR, "before to request imx582_avdd18_gpio:%d,,\n",ctrl->imx582_avdd18_gpio);
-				ret = gpio_request(ctrl->imx582_avdd18_gpio, "imx582_avdd18_gpio");
-				if (ret < 0) {
-					CAM_DBG(CAM_SENSOR, "Failed to request imx582_avdd18_gpio:%d,,\n",ctrl->imx582_avdd18_gpio);
-				}
-				//gpio_set_value_cansleep(ctrl->imx582_avdd18_gpio, 0);
-				gpio_direction_output(ctrl->imx582_avdd18_gpio,0);
-				gpio_free(ctrl->imx582_avdd18_gpio);
-
-                CAM_DBG(CAM_SENSOR, "before to request imx582_avdd28_gpio:%d,,\n",ctrl->imx582_avdd28_gpio);
-				ret = gpio_request(ctrl->imx582_avdd28_gpio, "imx582_avdd28_gpio");
-				if (ret < 0) {
-					CAM_DBG(CAM_SENSOR, "Failed to request imx582_avdd28_gpio:%d,,\n",ctrl->imx582_avdd28_gpio);
-				}
-				//gpio_set_value_cansleep(ctrl->imx582_avdd28_gpio, 0);
-				gpio_direction_output(ctrl->imx582_avdd28_gpio,0);
-				gpio_free(ctrl->imx582_avdd28_gpio);
-			}
-	        //add by hzt 2021-9-4  control external gpio
 
 			ret = msm_cam_sensor_handle_reg_gpio(pd->seq_type,
 				gpio_num_info, GPIOF_OUT_INIT_LOW);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -555,7 +555,6 @@ static struct snd_soc_codec_conf *msm_codec_conf;
 static struct snd_soc_card snd_soc_card_bengal_msm;
 static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
-static u32 wcd_datalane_mismatch;
 
 static void *def_wcd_mbhc_cal(void);
 static void *def_rouleur_mbhc_cal(void);
@@ -567,7 +566,7 @@ static void *def_rouleur_mbhc_cal(void);
 static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
-	.detect_extn_cable = false,
+	.detect_extn_cable = true,
 	.mono_stero_detection = false,
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
@@ -2185,7 +2184,7 @@ static int cdc_dma_rx_ch_get(struct snd_kcontrol *kcontrol,
 		return ch_num;
 	}
 
-	pr_err("%s: cdc_dma_rx_ch  = %d\n", __func__,
+	pr_debug("%s: cdc_dma_rx_ch  = %d\n", __func__,
 		 cdc_dma_rx_cfg[ch_num].channels - 1);
 	ucontrol->value.integer.value[0] = cdc_dma_rx_cfg[ch_num].channels - 1;
 	return 0;
@@ -2203,7 +2202,7 @@ static int cdc_dma_rx_ch_put(struct snd_kcontrol *kcontrol,
 
 	cdc_dma_rx_cfg[ch_num].channels = ucontrol->value.integer.value[0] + 1;
 
-	pr_err("%s: cdc_dma_rx_ch = %d\n", __func__,
+	pr_debug("%s: cdc_dma_rx_ch = %d\n", __func__,
 		cdc_dma_rx_cfg[ch_num].channels);
 	return 1;
 }
@@ -2879,65 +2878,6 @@ static int msm_bt_sample_rate_tx_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-//added by uner start
-extern unsigned char aw87xxx_show_current_mode(int32_t channel); 
-extern int aw87xxx_audio_scene_load(uint8_t mode, int32_t channel);
-extern unsigned char aw87xxx_show_current_mode1(int32_t channel); 
-extern int aw87xxx_audio_scene_load1(uint8_t mode, int32_t channel);
-
-static const char *const aw87xxx_mode_function_text[] = { "Off", "Music", "Voice", "Fm", "Rcv" };
-enum { AW87XXX_LEFT_CHANNEL = 0, AW87XXX_RIGHT_CHANNEL = 1, };
-
-static SOC_ENUM_SINGLE_EXT_DECL(aw87xxx_mode_function, aw87xxx_mode_function_text);
-
-static int aw87xxx_mode_get_0(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
-{ 
-    unsigned char current_mode; 
-    current_mode = aw87xxx_show_current_mode(AW87XXX_LEFT_CHANNEL); 
-    ucontrol->value.integer.value[0] = current_mode;
-    pr_info("%s: get mode:%d\n", __func__, current_mode);
-    return 0; 
-} 
-static int aw87xxx_mode_set_0(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
-{ 
-    int ret = 0;
-    unsigned char set_mode;
-
-    set_mode = ucontrol->value.integer.value[0];
-    ret = aw87xxx_audio_scene_load(set_mode, AW87XXX_LEFT_CHANNEL); 
-    if (ret < 0) 
-    {
-        pr_err("%s: mode:%d set failed\n", __func__, set_mode); 
-        return -EPERM; 
-    } 
-    pr_info("%s: set mode:%d success", __func__, set_mode); 
-    return 0; 
-} 
-static int aw87xxx_mode_get_1(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
-{ 
-    unsigned char current_mode;
-    current_mode = aw87xxx_show_current_mode1(AW87XXX_RIGHT_CHANNEL);
-    ucontrol->value.integer.value[0] = current_mode; 
-    pr_info("%s: get mode:%d\n", __func__, current_mode);
-    return 0; 
-}
-static int aw87xxx_mode_set_1(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
-{ 
-    int ret = 0;
-    unsigned char set_mode;
-
-    set_mode = ucontrol->value.integer.value[0];
-    ret = aw87xxx_audio_scene_load1(set_mode, AW87XXX_RIGHT_CHANNEL); 
-    if (ret < 0) 
-    { 
-        pr_err("%s: mode:%d set failed\n", __func__, set_mode); 
-        return -EPERM; 
-    }
-    pr_info("%s: set mode:%d success", __func__, set_mode);
-    return 0; 
-}
-//added by uner end
-
 static const struct snd_kcontrol_new msm_int_snd_controls[] = {
 	SOC_ENUM_EXT("RX_CDC_DMA_RX_0 Channels", rx_cdc_dma_rx_0_chs,
 			cdc_dma_rx_ch_get, cdc_dma_rx_ch_put),
@@ -3027,10 +2967,6 @@ static const struct snd_kcontrol_new msm_int_snd_controls[] = {
 			va_cdc_dma_tx_2_sample_rate,
 			cdc_dma_tx_sample_rate_get,
 			cdc_dma_tx_sample_rate_put),
-    //added by uner start
-    SOC_ENUM_EXT("aw87xxx_mode_switch_0", aw87xxx_mode_function, aw87xxx_mode_get_0, aw87xxx_mode_set_0), 
-    SOC_ENUM_EXT("aw87xxx_mode_switch_1", aw87xxx_mode_function, aw87xxx_mode_get_1, aw87xxx_mode_set_1),
-    //added by uner end
 };
 
 static const struct snd_kcontrol_new msm_common_snd_controls[] = {
@@ -4336,8 +4272,6 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct msm_asoc_mach_data *pdata =
 				snd_soc_card_get_drvdata(rtd->card);
 
-    pr_err("%s: enter\n",__func__);
-
 	component = snd_soc_rtdcom_lookup(rtd, "bolero_codec");
 	if (!component) {
 		pr_err("%s: could not find component for bolero_codec\n",
@@ -4396,11 +4330,7 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 				data = (char*) of_device_get_match_data(
 								&pdev->dev);
 			if (data != NULL) {
-				if (wcd_datalane_mismatch) {
-					bolero_set_port_map(component,
-						ARRAY_SIZE(sm_port_map_khaje),
-						sm_port_map_khaje);
-				} else if (!strncmp(data, "wcd937x",
+				if (!strncmp(data, "wcd937x",
 						sizeof("wcd937x"))) {
 					bolero_set_port_map(component,
 						ARRAY_SIZE(sm_port_map),
@@ -5949,8 +5879,6 @@ static int msm_audrx_stub_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_component *component =
 			snd_soc_rtdcom_lookup(rtd, "msm-stub-codec");
 
-    pr_err("* %s: enter\n",__func__);
-
 	if (!component) {
 		pr_err("* %s: No match for msm-stub-codec component\n",
 			__func__);
@@ -6806,10 +6734,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	ret = msm_init_aux_dev(pdev, card);
 	if (ret)
 		goto err;
-
-	ret = of_property_read_u32(pdev->dev.of_node,
-			"qcom,wcd-datalane-mismatch",
-			&wcd_datalane_mismatch);
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret == -EPROBE_DEFER) {

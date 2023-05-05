@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -54,9 +53,7 @@ static int cam_fd_mgr_util_packet_validate(struct cam_packet *packet,
 	}
 
 	/* All buffers must come through io config, do not support patching */
-	if (packet->num_patches ||
-		!packet->num_io_configs ||
-		!packet->num_cmd_buf) {
+	if (packet->num_patches || !packet->num_io_configs) {
 		CAM_ERR(CAM_FD, "wrong number of cmd/patch info: %u %u",
 			packet->num_cmd_buf, packet->num_patches);
 		return -EINVAL;
@@ -243,6 +240,15 @@ static int cam_fd_mgr_util_release_device(struct cam_fd_hw_mgr *hw_mgr,
 
 	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	hw_device->num_ctxts--;
+
+	if (!hw_device->num_ctxts) {
+		mutex_lock(&hw_device->lock);
+		hw_device->ready_to_process = true;
+		hw_device->req_id = -1;
+		hw_device->cur_hw_ctx = NULL;
+		mutex_unlock(&hw_device->lock);
+	}
+
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	hw_ctx->device_index = -1;
@@ -280,6 +286,11 @@ static int cam_fd_mgr_util_select_device(struct cam_fd_hw_mgr *hw_mgr,
 			(!fd_acquire_args->get_raw_results ||
 			hw_device->hw_caps.raw_results_available)) {
 			CAM_DBG(CAM_FD, "Found dedicated HW Index=%d", i);
+			mutex_lock(&hw_device->lock);
+			hw_device->ready_to_process = true;
+			hw_device->req_id = -1;
+			hw_device->cur_hw_ctx = NULL;
+			mutex_unlock(&hw_device->lock);
 			hw_device->num_ctxts++;
 			break;
 		}
@@ -297,7 +308,9 @@ static int cam_fd_mgr_util_select_device(struct cam_fd_hw_mgr *hw_mgr,
 				(!fd_acquire_args->get_raw_results ||
 				hw_device->hw_caps.raw_results_available)) {
 				hw_device->num_ctxts++;
-				CAM_DBG(CAM_FD, "Found sharing HW Index=%d", i);
+				CAM_DBG(CAM_FD,
+					"Found sharing HW Index=%d, num_ctxts=%d",
+					i, hw_device->num_ctxts);
 				break;
 			}
 		}
@@ -849,6 +862,11 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 
 	mutex_lock(&hw_device->lock);
 	if (hw_device->ready_to_process == false) {
+		if (hw_mgr->num_pending_frames > 6) {
+			CAM_WARN(CAM_FD,
+				"Device busy for longer time with cur_hw_ctx=%pK, ReqId=%lld",
+				hw_device->cur_hw_ctx, hw_device->req_id);
+		}
 		mutex_unlock(&hw_device->lock);
 		mutex_unlock(&hw_mgr->frame_req_mutex);
 		return -EBUSY;
@@ -857,7 +875,9 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 	trace_cam_submit_to_hw("FD", frame_req->request_id);
 
 	list_del_init(&frame_req->list);
-	mutex_unlock(&hw_mgr->frame_req_mutex);
+	hw_mgr->num_pending_frames--;
+	frame_req->submit_timestamp = ktime_get();
+	list_add_tail(&frame_req->list, &hw_mgr->frame_processing_list);
 
 	if (hw_device->hw_intf->hw_ops.start) {
 		start_args.hw_ctx = hw_ctx;
@@ -872,12 +892,16 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 			sizeof(start_args));
 		if (rc) {
 			CAM_ERR(CAM_FD, "Failed in HW Start %d", rc);
+			list_del_init(&frame_req->list);
 			mutex_unlock(&hw_device->lock);
+			mutex_unlock(&hw_mgr->frame_req_mutex);
 			goto put_req_into_free_list;
 		}
 	} else {
 		CAM_ERR(CAM_FD, "Invalid hw_ops.start");
+		list_del_init(&frame_req->list);
 		mutex_unlock(&hw_device->lock);
+		mutex_unlock(&hw_mgr->frame_req_mutex);
 		rc = -EPERM;
 		goto put_req_into_free_list;
 	}
@@ -886,30 +910,9 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 	hw_device->cur_hw_ctx = hw_ctx;
 	hw_device->req_id = frame_req->request_id;
 	mutex_unlock(&hw_device->lock);
-	frame_req->submit_timestamp = ktime_get();
-
-	rc = cam_fd_mgr_util_put_frame_req(
-		&hw_mgr->frame_processing_list, &frame_req);
-	if (rc) {
-		CAM_ERR(CAM_FD,
-			"Failed in putting frame req in processing list");
-		goto stop_unlock;
-	}
+	mutex_unlock(&hw_mgr->frame_req_mutex);
 
 	return rc;
-
-stop_unlock:
-	if (hw_device->hw_intf->hw_ops.stop) {
-		struct cam_fd_hw_stop_args stop_args;
-
-		stop_args.hw_ctx = hw_ctx;
-		stop_args.ctx_hw_private = hw_ctx->ctx_hw_private;
-		stop_args.hw_req_private = &frame_req->hw_req_private;
-		if (hw_device->hw_intf->hw_ops.stop(
-			hw_device->hw_intf->hw_priv, &stop_args,
-			sizeof(stop_args)))
-			CAM_ERR(CAM_FD, "Failed in HW Stop %d", rc);
-	}
 put_req_into_free_list:
 	cam_fd_mgr_util_put_frame_req(&hw_mgr->frame_free_list, &frame_req);
 
@@ -1277,17 +1280,25 @@ static int cam_fd_mgr_hw_start(void *hw_mgr_priv, void *mgr_start_args)
 	if (hw_device->hw_intf->hw_ops.init) {
 		hw_init_args.hw_ctx = hw_ctx;
 		hw_init_args.ctx_hw_private = hw_ctx->ctx_hw_private;
+		hw_init_args.is_hw_reset = false;
 		if (fd_core->hw_static_info->enable_errata_wa.skip_reset)
 			hw_init_args.reset_required = false;
 		else
 			hw_init_args.reset_required = true;
-
 		rc = hw_device->hw_intf->hw_ops.init(
 			hw_device->hw_intf->hw_priv, &hw_init_args,
 			sizeof(hw_init_args));
 		if (rc) {
 			CAM_ERR(CAM_FD, "Failed in HW Init %d", rc);
 			return rc;
+		}
+
+		if (hw_init_args.is_hw_reset) {
+			mutex_lock(&hw_device->lock);
+			hw_device->ready_to_process = true;
+			hw_device->req_id = -1;
+			hw_device->cur_hw_ctx = NULL;
+			mutex_unlock(&hw_device->lock);
 		}
 	} else {
 		CAM_ERR(CAM_FD, "Invalid init function");
@@ -1336,6 +1347,7 @@ static int cam_fd_mgr_hw_flush_req(void *hw_mgr_priv,
 			if (frame_req->request_id != flush_req->request_id)
 				continue;
 
+			hw_mgr->num_pending_frames--;
 			list_del_init(&frame_req->list);
 			break;
 		}
@@ -1348,6 +1360,7 @@ static int cam_fd_mgr_hw_flush_req(void *hw_mgr_priv,
 			if (frame_req->request_id != flush_req->request_id)
 				continue;
 
+			hw_mgr->num_pending_frames--;
 			list_del_init(&frame_req->list);
 			break;
 		}
@@ -1430,6 +1443,7 @@ static int cam_fd_mgr_hw_flush_ctx(void *hw_mgr_priv,
 		if (frame_req->hw_ctx != hw_ctx)
 			continue;
 
+		hw_mgr->num_pending_frames--;
 		list_del_init(&frame_req->list);
 	}
 
@@ -1438,6 +1452,7 @@ static int cam_fd_mgr_hw_flush_ctx(void *hw_mgr_priv,
 		if (frame_req->hw_ctx != hw_ctx)
 			continue;
 
+		hw_mgr->num_pending_frames--;
 		list_del_init(&frame_req->list);
 	}
 
@@ -1572,7 +1587,7 @@ static int cam_fd_mgr_hw_dump(
 	return rc;
 hw_dump:
 	cur_time = ktime_get();
-	diff = ktime_us_delta(frame_req->submit_timestamp, cur_time);
+	diff = ktime_us_delta(cur_time, frame_req->submit_timestamp);
 	cur_ts = ktime_to_timespec64(cur_time);
 	req_ts = ktime_to_timespec64(frame_req->submit_timestamp);
 	if (diff < CAM_FD_RESPONSE_TIME_THRESHOLD) {
@@ -1819,6 +1834,7 @@ static int cam_fd_mgr_hw_config(void *hw_mgr_priv, void *hw_config_args)
 	struct cam_fd_mgr_frame_request *frame_req;
 	int rc;
 	int i;
+	uint64_t req_id;
 
 	if (!hw_mgr || !config) {
 		CAM_ERR(CAM_FD, "Invalid arguments %pK %pK", hw_mgr, config);
@@ -1837,6 +1853,7 @@ static int cam_fd_mgr_hw_config(void *hw_mgr_priv, void *hw_config_args)
 	}
 
 	frame_req = config->priv;
+	req_id = frame_req->request_id;
 
 	trace_cam_apply_req("FD", frame_req->request_id);
 	CAM_DBG(CAM_FD, "FrameHWConfig : Frame[%lld]", frame_req->request_id);
@@ -1866,6 +1883,13 @@ static int cam_fd_mgr_hw_config(void *hw_mgr_priv, void *hw_config_args)
 		goto put_free_list;
 	}
 
+	mutex_lock(&g_fd_hw_mgr.frame_req_mutex);
+	hw_mgr->num_pending_frames++;
+	CAM_DBG(CAM_FD,
+		"Adding ctx[%pK] Req[%llu] : Total number of pending frames %d",
+		hw_ctx, req_id, hw_mgr->num_pending_frames);
+	mutex_unlock(&g_fd_hw_mgr.frame_req_mutex);
+
 	rc = cam_fd_mgr_util_schedule_frame_worker_task(hw_mgr);
 	if (rc) {
 		CAM_ERR(CAM_FD, "Worker task scheduling failed %d", rc);
@@ -1885,6 +1909,10 @@ remove_and_put_free_list:
 		cam_fd_mgr_util_get_frame_req(
 			&hw_mgr->frame_pending_list_normal, &frame_req);
 	}
+
+	mutex_lock(&g_fd_hw_mgr.frame_req_mutex);
+	hw_mgr->num_pending_frames--;
+	mutex_unlock(&g_fd_hw_mgr.frame_req_mutex);
 put_free_list:
 	cam_fd_mgr_util_put_frame_req(&hw_mgr->frame_free_list,
 		&frame_req);
@@ -1906,6 +1934,11 @@ int cam_fd_hw_mgr_deinit(struct device_node *of_node)
 	mutex_destroy(&g_fd_hw_mgr.hw_mgr_mutex);
 
 	return 0;
+}
+
+static void cam_req_mgr_process_workq_cam_fd_worker(struct work_struct *w)
+{
+	cam_req_mgr_process_workq(w);
 }
 
 int cam_fd_hw_mgr_init(struct device_node *of_node,
@@ -1955,6 +1988,8 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 		hw_device->valid = true;
 		hw_device->hw_intf = hw_intf;
 		hw_device->ready_to_process = true;
+		hw_device->req_id = -1;
+		hw_device->cur_hw_ctx = NULL;
 
 		if (hw_device->hw_intf->hw_ops.process_cmd) {
 			struct cam_fd_hw_cmd_set_irq_cb irq_cb_args;
@@ -2007,6 +2042,7 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 	g_fd_hw_mgr.device_iommu.secure = -1;
 	g_fd_hw_mgr.cdm_iommu.non_secure = -1;
 	g_fd_hw_mgr.cdm_iommu.secure = -1;
+	g_fd_hw_mgr.num_pending_frames = 0;
 
 	rc = cam_smmu_get_handle("fd",
 		&g_fd_hw_mgr.device_iommu.non_secure);
@@ -2050,7 +2086,8 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 	}
 
 	rc = cam_req_mgr_workq_create("cam_fd_worker", CAM_FD_WORKQ_NUM_TASK,
-		&g_fd_hw_mgr.work, CRM_WORKQ_USAGE_IRQ, 0);
+		&g_fd_hw_mgr.work, CRM_WORKQ_USAGE_IRQ, 0, true,
+		cam_req_mgr_process_workq_cam_fd_worker);
 	if (rc) {
 		CAM_ERR(CAM_FD, "Unable to create a worker, rc=%d", rc);
 		goto detach_smmu;

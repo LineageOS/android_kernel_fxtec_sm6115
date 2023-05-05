@@ -88,7 +88,7 @@ static int cam_req_mgr_process_task(struct crm_workq_task *task)
  * cam_req_mgr_process_workq() - main loop handling
  * @w: workqueue task pointer
  */
-static void cam_req_mgr_process_workq(struct work_struct *w)
+void cam_req_mgr_process_workq(struct work_struct *w)
 {
 	struct cam_req_mgr_core_workq *workq = NULL;
 	struct crm_workq_task         *task;
@@ -102,7 +102,6 @@ static void cam_req_mgr_process_workq(struct work_struct *w)
 	workq = (struct cam_req_mgr_core_workq *)
 		container_of(w, struct cam_req_mgr_core_workq, work);
 
-	cam_req_mgr_thread_switch_delay_detect(workq->workq_scheduled_ts);
 	while (i < CRM_TASK_PRIORITY_MAX) {
 		WORKQ_ACQUIRE_LOCK(workq, flags);
 		while (!list_empty(&workq->task.process_head[i])) {
@@ -165,7 +164,6 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 	CAM_DBG(CAM_CRM, "enq task %pK pending_cnt %d",
 		task, atomic_read(&workq->task.pending_cnt));
 
-	workq->workq_scheduled_ts = ktime_get();
 	queue_work(workq->job, &workq->work);
 	WORKQ_RELEASE_LOCK(workq, flags);
 end:
@@ -174,7 +172,7 @@ end:
 
 int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 	struct cam_req_mgr_core_workq **workq, enum crm_workq_context in_irq,
-	int flags)
+	int flags, bool is_static_payload, void (*func)(struct work_struct *w))
 {
 	int32_t i, wq_flags = 0, max_active_tasks = 0;
 	struct crm_workq_task  *task;
@@ -204,7 +202,7 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 		}
 
 		/* Workq attributes initialization */
-		INIT_WORK(&crm_workq->work, cam_req_mgr_process_workq);
+		INIT_WORK(&crm_workq->work, func);
 		spin_lock_init(&crm_workq->lock_bh);
 		CAM_DBG(CAM_CRM, "LOCK_DBG workq %s lock %pK",
 			name, &crm_workq->lock_bh);
@@ -216,6 +214,7 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 			INIT_LIST_HEAD(&crm_workq->task.process_head[i]);
 		INIT_LIST_HEAD(&crm_workq->task.empty_head);
 		crm_workq->in_irq = in_irq;
+		crm_workq->is_static_payload = is_static_payload;
 		crm_workq->task.num_task = num_tasks;
 		crm_workq->task.pool = kcalloc(crm_workq->task.num_task,
 				sizeof(struct crm_workq_task), GFP_KERNEL);
@@ -260,32 +259,12 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 		}
 
 		/* Destroy workq payload data */
-		kfree((*crm_workq)->task.pool[0].payload);
-		(*crm_workq)->task.pool[0].payload = NULL;
+		if (!((*crm_workq)->is_static_payload)) {
+			kfree((*crm_workq)->task.pool[0].payload);
+			(*crm_workq)->task.pool[0].payload = NULL;
+		}
 		kfree((*crm_workq)->task.pool);
 		kfree(*crm_workq);
 		*crm_workq = NULL;
-	}
-}
-
-void cam_req_mgr_thread_switch_delay_detect(ktime_t workq_scheduled)
-{
-	uint64_t                         diff;
-	ktime_t                          cur_time;
-	struct timespec64                cur_ts;
-	struct timespec64                workq_scheduled_ts;
-
-	cur_time = ktime_get();
-	diff = ktime_ms_delta(cur_time, workq_scheduled);
-	workq_scheduled_ts  = ktime_to_timespec64(workq_scheduled);
-	cur_ts = ktime_to_timespec64(cur_time);
-
-	if (diff > CAM_WORKQ_RESPONSE_TIME_THRESHOLD) {
-		CAM_ERR(CAM_CRM,
-			"Workq delay detected %ld:%06ld %ld:%06ld %ld:",
-			workq_scheduled_ts.tv_sec,
-			workq_scheduled_ts.tv_nsec/NSEC_PER_USEC,
-			cur_ts.tv_sec, cur_ts.tv_nsec/NSEC_PER_USEC,
-			diff);
 	}
 }
