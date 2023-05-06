@@ -2879,6 +2879,68 @@ static int msm_bt_sample_rate_tx_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+//added by uner start
+extern unsigned char aw87xxx_show_current_mode(int32_t channel); 
+extern int aw87xxx_audio_scene_load(uint8_t mode, int32_t channel);
+extern unsigned char aw87xxx_show_current_mode1(int32_t channel); 
+extern int aw87xxx_audio_scene_load1(uint8_t mode, int32_t channel);
+
+static const char *const aw87xxx_mode_function_text[] = { "Off", "Music", "Voice", "Fm", "Rcv" };
+enum { AW87XXX_LEFT_CHANNEL = 0, AW87XXX_RIGHT_CHANNEL = 1, };
+
+static SOC_ENUM_SINGLE_EXT_DECL(aw87xxx_mode_function, aw87xxx_mode_function_text);
+
+static int aw87xxx_mode_get_0(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
+{ 
+    unsigned char current_mode; 
+    current_mode = aw87xxx_show_current_mode(AW87XXX_LEFT_CHANNEL); 
+    ucontrol->value.integer.value[0] = current_mode;
+    pr_info("%s: get mode:%d\n", __func__, current_mode);
+    return 0; 
+}
+
+static int aw87xxx_mode_set_0(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
+{ 
+    int ret = 0;
+    unsigned char set_mode;
+
+    set_mode = ucontrol->value.integer.value[0];
+    ret = aw87xxx_audio_scene_load(set_mode, AW87XXX_LEFT_CHANNEL); 
+    if (ret < 0) 
+    {
+        pr_err("%s: mode:%d set failed\n", __func__, set_mode); 
+        return -EPERM; 
+    } 
+    pr_info("%s: set mode:%d success", __func__, set_mode); 
+    return 0; 
+}
+
+static int aw87xxx_mode_get_1(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{ 
+    unsigned char current_mode;
+    current_mode = aw87xxx_show_current_mode1(AW87XXX_RIGHT_CHANNEL);
+    ucontrol->value.integer.value[0] = current_mode; 
+    pr_info("%s: get mode:%d\n", __func__, current_mode);
+    return 0; 
+}
+
+static int aw87xxx_mode_set_1(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) 
+{ 
+    int ret = 0;
+    unsigned char set_mode;
+
+    set_mode = ucontrol->value.integer.value[0];
+    ret = aw87xxx_audio_scene_load1(set_mode, AW87XXX_RIGHT_CHANNEL); 
+    if (ret < 0) 
+    { 
+        pr_err("%s: mode:%d set failed\n", __func__, set_mode); 
+        return -EPERM; 
+    }
+    pr_info("%s: set mode:%d success", __func__, set_mode);
+    return 0; 
+}
+//added by uner end
+
 static const struct snd_kcontrol_new msm_int_snd_controls[] = {
 	SOC_ENUM_EXT("RX_CDC_DMA_RX_0 Channels", rx_cdc_dma_rx_0_chs,
 			cdc_dma_rx_ch_get, cdc_dma_rx_ch_put),
@@ -2968,6 +3030,16 @@ static const struct snd_kcontrol_new msm_int_snd_controls[] = {
 			va_cdc_dma_tx_2_sample_rate,
 			cdc_dma_tx_sample_rate_get,
 			cdc_dma_tx_sample_rate_put),
+	//added by uner start
+	SOC_ENUM_EXT("aw87xxx_mode_switch_0",
+			aw87xxx_mode_function,
+			aw87xxx_mode_get_0,
+			aw87xxx_mode_set_0), 
+	SOC_ENUM_EXT("aw87xxx_mode_switch_1",
+			aw87xxx_mode_function,
+			aw87xxx_mode_get_1,
+			aw87xxx_mode_set_1),
+	//added by uner end
 };
 
 static const struct snd_kcontrol_new msm_common_snd_controls[] = {
