@@ -10,8 +10,6 @@
 #ifndef __QCOM_SETTINGS_H_
 #define __QCOM_SETTINGS_H_
 
-
-
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
@@ -49,12 +47,11 @@
 #include "madev.h"
 
 //macro settings
-#define MA_DRV_NAME             "madev"
+#define MA_DRV_NAME		"madev"
 
-#define MA_DTS_NAME            "mediatek,hct_finger"
+#define MA_DTS_NAME		"mediatek,hct_finger"
 
-#define MA_EINT_DTS_NAME        "mediatek,hct_finger"
-
+#define MA_EINT_DTS_NAME	"mediatek,hct_finger"
 
 //macro settings end
 
@@ -66,51 +63,50 @@ extern int mas_probe(struct spi_device *spi);
 extern int mas_remove(struct spi_device *spi);
 #endif
 
-
 /* add for spi cls ctl start */
 struct mt_spi_t {
-        struct platform_device *pdev;
-        void __iomem *regs;
-        int irq;
-        int running;
+	struct platform_device *pdev;
+	void __iomem *regs;
+	int irq;
+	int running;
 #ifdef CONFIG_PM_WAKELOCKS
-        struct wakeup_source wk_lock;
+	struct wakeup_source wk_lock;
 #else
-        struct wake_lock wk_lock;
+	struct wake_lock wk_lock;
 #endif
-        struct mt_chip_conf *config;
-        struct spi_master *master;
+	struct mt_chip_conf *config;
+	struct spi_master *master;
 
-        struct spi_transfer *cur_transfer;
-        struct spi_transfer *next_transfer;
+	struct spi_transfer *cur_transfer;
+	struct spi_transfer *next_transfer;
 
-        spinlock_t lock;
-        struct list_head queue;
+	spinlock_t lock;
+	struct list_head queue;
 #if !defined(CONFIG_MTK_CLKMGR)
-        struct clk *clk_main;
+	struct clk *clk_main;
 #endif
 };
 
 //kingsun/zlc: This struct is porting from mtk, It's no use actually at qcom platform
 struct qcom_chip_conf {
-        int setuptime;
-        int holdtime;
-	 int high_time;
-	 int low_time;
-	 int cs_idletime;
-	 int ulthgh_thrsh;
-	 int cpol;
-	 int cpha;
-	 int rx_mlsb;
-	 int tx_mlsb;
-	 int tx_endian;
-	 int rx_endian;
-	 int com_mod;
-	 int pause;
-	 int finish_intr;
-	 int deassert;
-	 int ulthigh;
-	 int tckdly;
+	int setuptime;
+	int holdtime;
+	int high_time;
+	int low_time;
+	int cs_idletime;
+	int ulthgh_thrsh;
+	int cpol;
+	int cpha;
+	int rx_mlsb;
+	int tx_mlsb;
+	int tx_endian;
+	int rx_endian;
+	int com_mod;
+	int pause;
+	int finish_intr;
+	int deassert;
+	int ulthigh;
+	int tckdly;
 };
 
 /* add for spi cls ctl end this func only used in tee enviroment*/
