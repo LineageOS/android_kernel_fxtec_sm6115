@@ -19,133 +19,128 @@ struct mas_platform_data {
 	int external_supply_mv;
 	int txout_boost;
 	int force_hwid;
-//kingsun/zlc:
+	//kingsun/zlc:
 	int clk_enabled;
 	struct clk *core_clk;
-    struct clk *iface_clk;
+	struct clk *iface_clk;
 	unsigned int int_irq;
-//end
+	//end
 };
 
 struct mas_platform_data *mas_pdata;
-int first_int_after_suspend=0;               //kingsun/zlc:
-
+int first_int_after_suspend = 0; //kingsun/zlc:
 
 #ifdef CONFIG_OF
 /* -------------------------------------------------------------------- */
 #ifdef CONFIG_HAS_EARLYSUSPEND
 int mas_suspend(struct spi_device *spi, pm_message_t mesg)
 {
-    printk("%s start\n",__func__);
-    if (device_may_wakeup(&spi->dev))
-        enable_irq_wake(mas_pdata->int_irq);
+	printk("%s start\n", __func__);
+	if (device_may_wakeup(&spi->dev))
+		enable_irq_wake(mas_pdata->int_irq);
 
 #ifndef USE_PLATFORM_DRIVE
-    printk("mas_ioctl_clk_disable\n");
-    mas_disable_spi_clock(spi);
+	printk("mas_ioctl_clk_disable\n");
+	mas_disable_spi_clock(spi);
 #endif //USE_PLATFORM_DRIVE
-    first_int_after_suspend=1;
-    printk("%s end\n",__func__);
-    return 0;
+	first_int_after_suspend = 1;
+	printk("%s end\n", __func__);
+	return 0;
 }
-
 
 /* -------------------------------------------------------------------- */
 int mas_resume(struct spi_device *spi)
 {
-    printk("%s start\n",__func__);
-    if (device_may_wakeup(&spi->dev))
-        disable_irq_wake(mas_pdata->int_irq);
+	printk("%s start\n", __func__);
+	if (device_may_wakeup(&spi->dev))
+		disable_irq_wake(mas_pdata->int_irq);
 
 #ifndef USE_PLATFORM_DRIVE
-    printk("mas_enable_spi_clock\n");
-    mas_enable_spi_clock(spi);
+	printk("mas_enable_spi_clock\n");
+	mas_enable_spi_clock(spi);
 #endif //USE_PLATFORM_DRIVE
-    printk("%s end\n",__func__);
-    return 0;
+	printk("%s end\n", __func__);
+	return 0;
 }
 
-
 #else
-
 
 int mas_suspend(struct device *dev)
 {
 #ifdef USE_PLATFORM_DRIVE
-    printk("%s start\n",__func__);
+	printk("%s start\n", __func__);
 #else
-    struct spi_device *spi = NULL;
-    printk("%s start\n",__func__);
+	struct spi_device *spi = NULL;
+	printk("%s start\n", __func__);
 
-    spi = to_spi_device(dev);
-    if (spi == NULL) {
-        printk("%s get spi device failed\n",__func__);
-        return -1;
-    }
+	spi = to_spi_device(dev);
+	if (spi == NULL) {
+		printk("%s get spi device failed\n", __func__);
+		return -1;
+	}
 #endif //USE_PLATFORM_DRIVE
 
-    if (device_may_wakeup(dev))
-        enable_irq_wake(mas_pdata->int_irq);
+	if (device_may_wakeup(dev))
+		enable_irq_wake(mas_pdata->int_irq);
 
 #ifndef USE_PLATFORM_DRIVE
-    printk("mas_ioctl_clk_disable\n");
-    mas_disable_spi_clock(spi);
+	printk("mas_ioctl_clk_disable\n");
+	mas_disable_spi_clock(spi);
 #endif //USE_PLATFORM_DRIVE
-    first_int_after_suspend=1;
-    printk("%s end\n",__func__);
-    return 0;
+	first_int_after_suspend = 1;
+	printk("%s end\n", __func__);
+	return 0;
 }
-
 
 int mas_resume(struct device *dev)
 {
 #ifdef USE_PLATFORM_DRIVE
-    printk("%s start\n",__func__);
+	printk("%s start\n", __func__);
 #else
-    struct spi_device *spi = NULL;
+	struct spi_device *spi = NULL;
 
-    printk("%s start\n",__func__);
+	printk("%s start\n", __func__);
 
-    spi = to_spi_device(dev);
-    if (spi == NULL) {
-        printk("%s get spi device failed\n",__func__);
-        return -1;
-    }
+	spi = to_spi_device(dev);
+	if (spi == NULL) {
+		printk("%s get spi device failed\n", __func__);
+		return -1;
+	}
 #endif //USE_PLATFORM_DRIVE
 
-    if (device_may_wakeup(dev))
-        disable_irq_wake(mas_pdata->int_irq);
+	if (device_may_wakeup(dev))
+		disable_irq_wake(mas_pdata->int_irq);
 
 #ifndef USE_PLATFORM_DRIVE
-    printk("mas_enable_spi_clock\n");
-    mas_enable_spi_clock(spi);
+	printk("mas_enable_spi_clock\n");
+	mas_enable_spi_clock(spi);
 #endif //USE_PLATFORM_DRIVE
 
-    printk("%s end\n",__func__);
-    return 0;
+	printk("%s end\n", __func__);
+	return 0;
 }
 #endif //CONFIG_HAS_EARLYSUSPEND
 
-
 static struct of_device_id mas_of_match[] = {
-    {.compatible = "microarray,fingerprint",},
-    {}
+	{
+		.compatible = "microarray,fingerprint",
+	},
+	{}
 };
 
 MODULE_DEVICE_TABLE(of, mas_of_match);
 
 #ifndef CONFIG_HAS_EARLYSUSPEND
 const struct dev_pm_ops mas_pm_ops = {
-    .suspend = mas_suspend,
-    .resume = mas_resume,
+	.suspend = mas_suspend,
+	.resume = mas_resume,
 };
 #endif //CONFIG_HAS_EARLYSUSPEND
 
-#endif//CONFIG_OF
-
+#endif //CONFIG_OF
 
 #ifndef USE_PLATFORM_DRIVE
-struct spi_device_id sdev_id = {MA_DRV_NAME, 0};
+struct spi_device_id sdev_id = { MA_DRV_NAME, 0 };
 #endif //USE_PLATFORM_DRIVE
 
 #ifdef USE_PLATFORM_DRIVE
@@ -162,7 +157,7 @@ struct spi_driver sdrv = {
 #endif //CONFIG_HAS_EARLYSUSPEND
 #ifdef CONFIG_OF
         .of_match_table = mas_of_match,
-#endif  //CONFIG_OF
+#endif //CONFIG_OF
     },
 #ifndef USE_PLATFORM_DRIVE
     .id_table = &sdev_id,
@@ -181,192 +176,196 @@ struct spi_driver sdrv = {
  *  the spi struct date start,for getting the spi_device to set the spi clock enable end
  */
 
-void mas_select_transfer(struct spi_device *spi, int len) {
-   return ;
+void mas_select_transfer(struct spi_device *spi, int len)
+{
+	return;
 }
 
 /*
  *  set spi speed, often we must check whether the setting is efficient
  */
 
-void ma_spi_change(struct spi_device *spi, unsigned int  speed, int flag)
+void ma_spi_change(struct spi_device *spi, unsigned int speed, int flag)
 {
-    struct qcom_chip_conf *mcc = (struct qcom_chip_conf *)spi->controller_data;
-    if(flag == 0) {
-        mcc->com_mod = 0;
-    } else {
-        mcc->com_mod = 1;
-    }
-    mcc->high_time = speed;
-    mcc->low_time = speed;
-    if(spi_setup(spi) < 0){
-        printk("change the spi error!\n");
-    }
+	struct qcom_chip_conf *mcc =
+		(struct qcom_chip_conf *)spi->controller_data;
+	if (flag == 0) {
+		mcc->com_mod = 0;
+	} else {
+		mcc->com_mod = 1;
+	}
+	mcc->high_time = speed;
+	mcc->low_time = speed;
+	if (spi_setup(spi) < 0) {
+		printk("change the spi error!\n");
+	}
 }
-
 
 static long spi_clk_max_rate(struct clk *clk, unsigned long rate)
 {
-    long lowest_available, nearest_low, step_size, cur;
-    long step_direction = -1;
-    long guess = rate;
-    int max_steps = 10;
+	long lowest_available, nearest_low, step_size, cur;
+	long step_direction = -1;
+	long guess = rate;
+	int max_steps = 10;
 
-  //  FUNC_ENTRY();
-    cur = clk_round_rate(clk, rate);
-    if (cur == rate)
-        return rate;
+	//  FUNC_ENTRY();
+	cur = clk_round_rate(clk, rate);
+	if (cur == rate)
+		return rate;
 
-    /* if we got here then: cur > rate */
-    lowest_available = clk_round_rate(clk, 0);
-    if (lowest_available > rate)
-        return -EINVAL;
+	/* if we got here then: cur > rate */
+	lowest_available = clk_round_rate(clk, 0);
+	if (lowest_available > rate)
+		return -EINVAL;
 
-    step_size = (rate - lowest_available) >> 1;
-    nearest_low = lowest_available;
+	step_size = (rate - lowest_available) >> 1;
+	nearest_low = lowest_available;
 
-    while (max_steps-- && step_size) {
-        guess += step_size * step_direction;
-        cur = clk_round_rate(clk, guess);
+	while (max_steps-- && step_size) {
+		guess += step_size * step_direction;
+		cur = clk_round_rate(clk, guess);
 
-        if ((cur < rate) && (cur > nearest_low))
-            nearest_low = cur;
-        /*
+		if ((cur < rate) && (cur > nearest_low))
+			nearest_low = cur;
+		/*
          * if we stepped too far, then start stepping in the other
          * direction with half the step size
          */
-        if (((cur > rate) && (step_direction > 0))
-                || ((cur < rate) && (step_direction < 0))) {
-            step_direction = -step_direction;
-            step_size >>= 1;
-        }
-    }
-    return nearest_low;
+		if (((cur > rate) && (step_direction > 0)) ||
+		    ((cur < rate) && (step_direction < 0))) {
+			step_direction = -step_direction;
+			step_size >>= 1;
+		}
+	}
+	return nearest_low;
 }
 
 static void spi_clock_set(struct mas_platform_data *data, int speed)
 {
-    long rate;
-    int rc;
-  //  FUNC_ENTRY();
-    return ;     //kingsun/zlc: bypass the operation of spi clock
-    rate = spi_clk_max_rate(data->core_clk, speed);
-    if (rate < 0) {
-        pr_info("%s: no match found for requested clock frequency:%d",
-                __func__, speed);
-        return;
-    }
+	long rate;
+	int rc;
+	//  FUNC_ENTRY();
+	return; //kingsun/zlc: bypass the operation of spi clock
+	rate = spi_clk_max_rate(data->core_clk, speed);
+	if (rate < 0) {
+		pr_info("%s: no match found for requested clock frequency:%d",
+			__func__, speed);
+		return;
+	}
 
-    rc = clk_set_rate(data->core_clk, rate);
+	rc = clk_set_rate(data->core_clk, rate);
 }
 
+static int mas_ioctl_clk_init(struct spi_device *spi,
+			      struct mas_platform_data *data)
+{
+	return 0; //kingsun/zlc: bypass the operation of spi clock
+	pr_info("%s: enter\n", __func__);
 
-static int mas_ioctl_clk_init(struct spi_device *spi, struct mas_platform_data *data)
-{    return 0;     //kingsun/zlc: bypass the operation of spi clock
-    pr_info("%s: enter\n", __func__);
-
-    data->clk_enabled = 0;
-    data->core_clk = clk_get(&spi->dev, "core_clk");
-    if (IS_ERR_OR_NULL(data->core_clk)) {
-        pr_err("%s: fail to get core_clk\n", __func__);
-        return -1;
-    }
-    data->iface_clk = clk_get(&spi->dev, "iface_clk");
-    if (IS_ERR_OR_NULL(data->iface_clk)) {
-        pr_err("%s: fail to get iface_clk\n", __func__);
-        clk_put(data->core_clk);
-        data->core_clk = NULL;
-        return -2;
-    }
-    return 0;
+	data->clk_enabled = 0;
+	data->core_clk = clk_get(&spi->dev, "core_clk");
+	if (IS_ERR_OR_NULL(data->core_clk)) {
+		pr_err("%s: fail to get core_clk\n", __func__);
+		return -1;
+	}
+	data->iface_clk = clk_get(&spi->dev, "iface_clk");
+	if (IS_ERR_OR_NULL(data->iface_clk)) {
+		pr_err("%s: fail to get iface_clk\n", __func__);
+		clk_put(data->core_clk);
+		data->core_clk = NULL;
+		return -2;
+	}
+	return 0;
 }
 
 static int mas_ioctl_clk_uninit(struct mas_platform_data *data)
 {
-    return 0;     //kingsun/zlc: bypass the operation of spi clock
-    pr_info("%s: enter\n", __func__);
+	return 0; //kingsun/zlc: bypass the operation of spi clock
+	pr_info("%s: enter\n", __func__);
 
-    if (!IS_ERR_OR_NULL(data->core_clk)) {
-        clk_put(data->core_clk);
-        data->core_clk = NULL;
-    }
+	if (!IS_ERR_OR_NULL(data->core_clk)) {
+		clk_put(data->core_clk);
+		data->core_clk = NULL;
+	}
 
-    if (!IS_ERR_OR_NULL(data->iface_clk)) {
-        clk_put(data->iface_clk);
-        data->iface_clk = NULL;
-    }
+	if (!IS_ERR_OR_NULL(data->iface_clk)) {
+		clk_put(data->iface_clk);
+		data->iface_clk = NULL;
+	}
 
-    return 0;
+	return 0;
 }
 
 static int mas_ioctl_clk_enable(struct mas_platform_data *data)
 {
-    int err;
-    return 0;     //kingsun/zlc: bypass the operation of spi clock
-    pr_debug("%s: enter\n", __func__);
+	int err;
+	return 0; //kingsun/zlc: bypass the operation of spi clock
+	pr_debug("%s: enter\n", __func__);
 
-    if (data->clk_enabled)
-        return 0;
+	if (data->clk_enabled)
+		return 0;
 
-    err = clk_prepare_enable(data->core_clk);
-    if (err) {
-        pr_err("%s: fail to enable core_clk\n", __func__);
-        return -1;
-    }
+	err = clk_prepare_enable(data->core_clk);
+	if (err) {
+		pr_err("%s: fail to enable core_clk\n", __func__);
+		return -1;
+	}
 
-    err = clk_prepare_enable(data->iface_clk);
-    if (err) {
-        pr_err("%s: fail to enable iface_clk\n", __func__);
-        clk_disable_unprepare(data->core_clk);
-        return -2;
-    }
+	err = clk_prepare_enable(data->iface_clk);
+	if (err) {
+		pr_err("%s: fail to enable iface_clk\n", __func__);
+		clk_disable_unprepare(data->core_clk);
+		return -2;
+	}
 
-    data->clk_enabled = 1;
+	data->clk_enabled = 1;
 
-    return 0;
+	return 0;
 }
 
 static int mas_ioctl_clk_disable(struct mas_platform_data *data)
 {
-    return 0;     //kingsun/zlc: bypass the operation of spi clock
-    if (!data->clk_enabled)
-        return 0;
+	return 0; //kingsun/zlc: bypass the operation of spi clock
+	if (!data->clk_enabled)
+		return 0;
 
-    clk_disable_unprepare(data->core_clk);
-    clk_disable_unprepare(data->iface_clk);
-    data->clk_enabled = 0;
+	clk_disable_unprepare(data->core_clk);
+	clk_disable_unprepare(data->iface_clk);
+	data->clk_enabled = 0;
 
-    return 0;
+	return 0;
 }
-#endif  //USE_PLATFORM_DRIVE
+#endif //USE_PLATFORM_DRIVE
 
-int mas_get_platform(void) {
-    int ret;
+int mas_get_platform(void)
+{
+	int ret;
 #ifdef USE_PLATFORM_DRIVE
-    ret = platform_driver_register(&sdrv);
+	ret = platform_driver_register(&sdrv);
 #else
 	ret = spi_register_driver(&sdrv);
 #endif
-	pr_err("MAFP_ spi_register_driver ret = %d",ret);
+	pr_err("MAFP_ spi_register_driver ret = %d", ret);
 
-	if(ret) {
+	if (ret) {
 		printk("spi_register_driver ok");
 	}
 	return ret;
 }
 
-int mas_remove_platform(void){
+int mas_remove_platform(void)
+{
 #ifdef USE_PLATFORM_DRIVE
-    platform_driver_unregister(&sdrv);
+	platform_driver_unregister(&sdrv);
 #else
-    spi_unregister_driver(&sdrv);
+	spi_unregister_driver(&sdrv);
 #endif
 	return 0;
 }
 
 static int mas_get_of_pdata(struct device *dev)
 {
-    struct device_node *node = dev->of_node;
+	struct device_node *node = dev->of_node;
 	mas_pdata->irq_gpio = of_get_named_gpio(node, "microarray,gpio_irq", 0);
 	pr_info("%s:irq-gpio = %d\n", __func__, mas_pdata->irq_gpio);
 	if (mas_pdata->irq_gpio < 0) {
@@ -374,14 +373,15 @@ static int mas_get_of_pdata(struct device *dev)
 		goto of_err;
 	}
 
-    mas_pdata->finger_en_gpio = of_get_named_gpio(node, "microarray,gpio_pwr", 0);
-	pr_info("%s:power-gpio = %d\n", __func__,mas_pdata->finger_en_gpio);
+	mas_pdata->finger_en_gpio =
+		of_get_named_gpio(node, "microarray,gpio_pwr", 0);
+	pr_info("%s:power-gpio = %d\n", __func__, mas_pdata->finger_en_gpio);
 	if (mas_pdata->finger_en_gpio < 0) {
 		pr_err("finger_en gpio is missing\n");
 		goto of_err;
 	}
 
-    /*mas_pdata->vcc_io_l6 = regulator_get(dev, "vcc_io");
+	/*mas_pdata->vcc_io_l6 = regulator_get(dev, "vcc_io");
     if (IS_ERR(mas_pdata->vcc_io_l6)){
 	    pr_info("%s:Failed to get the regulator for vcc_io. \n", __func__);
 	    goto of_err;
@@ -390,8 +390,8 @@ static int mas_get_of_pdata(struct device *dev)
 		pr_info("%s:Get the regulator for vcc_io sucessfully.\n", __func__);
 	*/
 
-     dev_info(dev, "end parse_dt\n");
-     return 0;
+	dev_info(dev, "end parse_dt\n");
+	return 0;
 
 of_err:
 	return -ENODEV;
@@ -402,30 +402,34 @@ static int mas_gpio_configure(bool on)
 	int err = 0;
 	if (on) {
 		if (gpio_is_valid(mas_pdata->irq_gpio)) {
-			err = gpio_request(mas_pdata->irq_gpio,
-						"mas_irq_gpio");
+			err = gpio_request(mas_pdata->irq_gpio, "mas_irq_gpio");
 			if (err) {
-				pr_info("%s:irq gpio request failed\n",__func__);
+				pr_info("%s:irq gpio request failed\n",
+					__func__);
 				goto err_irq_gpio_req;
 			}
 			err = gpio_direction_input(mas_pdata->irq_gpio);
 			if (err) {
-				pr_info("%s:set_direction for irq gpio failed\n",__func__);
+				pr_info("%s:set_direction for irq gpio failed\n",
+					__func__);
 				goto err_irq_gpio_dir;
 			}
 		}
 
 		if (gpio_is_valid(mas_pdata->finger_en_gpio)) {
 			err = gpio_request(mas_pdata->finger_en_gpio,
-						"mas_en_gpio");
+					   "mas_en_gpio");
 			if (err) {
-				pr_info("%s:en gpio request failed\n",__func__);
+				pr_info("%s:en gpio request failed\n",
+					__func__);
 				goto err_irq_gpio_dir;
 			}
 
-			err = gpio_direction_output(mas_pdata->finger_en_gpio, 0);
+			err = gpio_direction_output(mas_pdata->finger_en_gpio,
+						    0);
 			if (err) {
-				pr_info("%s:set_direction for en gpio failed\n",__func__);
+				pr_info("%s:set_direction for en gpio failed\n",
+					__func__);
 				goto err_en_gpio_dir;
 			}
 		}
@@ -449,18 +453,17 @@ err_irq_gpio_req:
 	return err;
 }
 
+int mas_fingerprint_power(bool flags)
+{
+	int rc = 0;
+	//int vcc_io;
 
- int mas_fingerprint_power(bool flags)
- {
-    int rc=0;
-    //int vcc_io;
-
-    if (flags) {
-	    if (gpio_is_valid(mas_pdata->finger_en_gpio)) {
-                gpio_set_value(mas_pdata->finger_en_gpio, 1);
-           }
-           msleep(10);
-        #if 0
+	if (flags) {
+		if (gpio_is_valid(mas_pdata->finger_en_gpio)) {
+			gpio_set_value(mas_pdata->finger_en_gpio, 1);
+		}
+		msleep(10);
+#if 0
 	    rc=regulator_enable(mas_pdata->vcc_io_l6);
 	    if (rc < 0){
 		 pr_err("%s: regulator_enable failed\n", __func__);
@@ -471,14 +474,14 @@ err_irq_gpio_req:
 
 	    vcc_io=regulator_get_voltage(mas_pdata->vcc_io_l6);
 	    pr_info("%s:regulator_get_voltage =%d\n", __func__,vcc_io);
-        #endif
-	    pr_info("---- power on ok ----\n");
- 	} else {
-	    if (gpio_is_valid(mas_pdata->finger_en_gpio)) {
-                gpio_set_value(mas_pdata->finger_en_gpio, 0);
-              }
-           msleep(10);
-        #if 0
+#endif
+		pr_info("---- power on ok ----\n");
+	} else {
+		if (gpio_is_valid(mas_pdata->finger_en_gpio)) {
+			gpio_set_value(mas_pdata->finger_en_gpio, 0);
+		}
+		msleep(10);
+#if 0
 	    rc=regulator_disable(mas_pdata->vcc_io_l6);
 	    if (rc < 0){
 		  pr_err("%s:regulator_disable failed\n", __func__);
@@ -486,10 +489,10 @@ err_irq_gpio_req:
 	    }
 	   else
 		  pr_info("%s:regulator_disable is successful.\n", __func__);
-        #endif
-	    pr_info("---- power off ok ----\n");
+#endif
+		pr_info("---- power off ok ----\n");
 	}
-//enable_err:
+	//enable_err:
 	return rc;
 }
 
@@ -499,20 +502,20 @@ int mas_qcm_platform_uninit(struct platform_device *spi)
 int mas_qcm_platform_uninit(struct spi_device *spi)
 #endif
 {
-    int ret=0;
-    #ifndef USE_PLATFORM_DRIVE
-    mas_ioctl_clk_uninit(mas_pdata);
-    #endif
-    mas_fingerprint_power(false);
+	int ret = 0;
+#ifndef USE_PLATFORM_DRIVE
+	mas_ioctl_clk_uninit(mas_pdata);
+#endif
+	mas_fingerprint_power(false);
 
-    #if 0
+#if 0
     if(mas_pdata->vcc_io_l6)
     regulator_put(mas_pdata->vcc_io_l6);
-    #endif
-    mas_gpio_configure(false);
-    mas_pdata->int_irq=0;
-    kfree(mas_pdata);
-    return ret;
+#endif
+	mas_gpio_configure(false);
+	mas_pdata->int_irq = 0;
+	kfree(mas_pdata);
+	return ret;
 }
 
 #ifdef USE_PLATFORM_DRIVE
@@ -521,69 +524,70 @@ int mas_qcm_platform_init(struct platform_device *spi)
 int mas_qcm_platform_init(struct spi_device *spi)
 #endif
 {
-    int ret=0;
-    mas_pdata = kmalloc(sizeof(struct mas_platform_data), GFP_KERNEL);
-    if (mas_pdata == NULL) {
-	    pr_info("%s:Failed to allocate buffer\n", __func__);
-	    ret=-ENOMEM;
-	    goto fingeriprnt_err_devm_kzalloc;
-    }
-    ret = mas_get_of_pdata(&spi->dev);
-    if(ret<0)
-   	    goto fingeriprnt_get_of_pdata_err;
+	int ret = 0;
+	mas_pdata = kmalloc(sizeof(struct mas_platform_data), GFP_KERNEL);
+	if (mas_pdata == NULL) {
+		pr_info("%s:Failed to allocate buffer\n", __func__);
+		ret = -ENOMEM;
+		goto fingeriprnt_err_devm_kzalloc;
+	}
+	ret = mas_get_of_pdata(&spi->dev);
+	if (ret < 0)
+		goto fingeriprnt_get_of_pdata_err;
 
-    ret = mas_gpio_configure(true);
-    if(ret<0)
-   	    goto fingeriprnt_gpio_configure_err;
+	ret = mas_gpio_configure(true);
+	if (ret < 0)
+		goto fingeriprnt_gpio_configure_err;
 
-    ret = mas_fingerprint_power(true);
-    if(ret<0)
-   	    goto fingeriprnt_power_err;
+	ret = mas_fingerprint_power(true);
+	if (ret < 0)
+		goto fingeriprnt_power_err;
 
-    #ifndef USE_PLATFORM_DRIVE
-    if (mas_ioctl_clk_init(spi, mas_pdata))
-       goto fingeriprnt_power_err;
+#ifndef USE_PLATFORM_DRIVE
+	if (mas_ioctl_clk_init(spi, mas_pdata))
+		goto fingeriprnt_power_err;
 
-    if (mas_ioctl_clk_enable(mas_pdata))
-        goto fingeriprnt_clk_enable_failed;
-    spi_clock_set(mas_pdata, 9600000);
-    #endif
+	if (mas_ioctl_clk_enable(mas_pdata))
+		goto fingeriprnt_clk_enable_failed;
+	spi_clock_set(mas_pdata, 9600000);
+#endif
 
-    return ret;
+	return ret;
 
 #ifndef USE_PLATFORM_DRIVE
 fingeriprnt_clk_enable_failed:
-   mas_ioctl_clk_uninit(mas_pdata);
+	mas_ioctl_clk_uninit(mas_pdata);
 #endif
 fingeriprnt_power_err:
-   //if(mas_pdata->vcc_io_l6)
-      //regulator_put(mas_pdata->vcc_io_l6);
+	//if(mas_pdata->vcc_io_l6)
+	//regulator_put(mas_pdata->vcc_io_l6);
 fingeriprnt_gpio_configure_err:
 fingeriprnt_get_of_pdata_err:
-   kfree(mas_pdata);
+	kfree(mas_pdata);
 fingeriprnt_err_devm_kzalloc:
-   return ret;
+	return ret;
 }
 
 #ifndef USE_PLATFORM_DRIVE
 void mas_enable_spi_clock(struct spi_device *spi)
 {
-    mas_ioctl_clk_enable(mas_pdata);
+	mas_ioctl_clk_enable(mas_pdata);
 }
 
 void mas_disable_spi_clock(struct spi_device *spi)
 {
-    mas_ioctl_clk_disable(mas_pdata);
+	mas_ioctl_clk_disable(mas_pdata);
 }
 #endif
 
-unsigned int mas_get_irq(void){
-    unsigned int irq=0;
-    irq =  gpio_to_irq(mas_pdata->irq_gpio);
-    if(irq)
-        printk("mas_get_irq: %d\n",irq);
-    mas_pdata->int_irq=irq;
-    return irq;
+unsigned int mas_get_irq(void)
+{
+	unsigned int irq = 0;
+	irq = gpio_to_irq(mas_pdata->irq_gpio);
+	if (irq)
+		printk("mas_get_irq: %d\n", irq);
+	mas_pdata->int_irq = irq;
+	return irq;
 }
 
 #ifdef USE_PLATFORM_DRIVE
@@ -592,7 +596,7 @@ void mas_set_wakeup(struct platform_device *spi)
 void mas_set_wakeup(struct spi_device *spi)
 #endif
 {
-    device_init_wakeup(&spi->dev, 1);
+	device_init_wakeup(&spi->dev, 1);
 }
 
 /*
@@ -606,6 +610,7 @@ void mas_set_wakeup(struct spi_device *spi)
  *		finger_int_pin = <100 0>;
  * }
  */
-int mas_get_interrupt_gpio(unsigned int index){
-	 return gpio_get_value(mas_pdata->irq_gpio);
+int mas_get_interrupt_gpio(unsigned int index)
+{
+	return gpio_get_value(mas_pdata->irq_gpio);
 }
