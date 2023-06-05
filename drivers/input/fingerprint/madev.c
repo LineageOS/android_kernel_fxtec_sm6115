@@ -125,9 +125,11 @@ static void mas_set_input(void)
 	set_bit(FINGERPRINT_SWIPE_DOWN, input->keybit);
 	set_bit(FINGERPRINT_SWIPE_LEFT, input->keybit);
 	set_bit(FINGERPRINT_SWIPE_RIGHT, input->keybit);
+	/* Removed for LineageOS
 	set_bit(FINGERPRINT_TAP, input->keybit);
 	set_bit(FINGERPRINT_DTAP, input->keybit);
 	set_bit(FINGERPRINT_LONGPRESS, input->keybit);
+	*/
 
 	set_bit(KEY_POWER, input->keybit);
 
@@ -178,6 +180,7 @@ static long mas_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case DISABLE_INTERRUPT:
 		disable_irq(irq); //disable the irq
 		break;
+	/* Removed for LineageOS
 	case TAP_DOWN:
 		input_report_key(smas->input, FINGERPRINT_TAP, 1);
 		input_sync(smas->input); //tap down
@@ -204,6 +207,7 @@ static long mas_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		input_report_key(smas->input, FINGERPRINT_LONGPRESS, 0);
 		input_sync(smas->input); //long tap
 		break;
+	*/
 	case MA_KEY_UP:
 		input_report_key(smas->input, FINGERPRINT_SWIPE_UP, 1);
 		input_sync(smas->input);
