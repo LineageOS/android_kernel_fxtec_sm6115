@@ -1168,6 +1168,7 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CTM_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_THERM_ICL_LIMIT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_LIMIT:
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
@@ -1738,6 +1739,7 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
+	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 };
 
 #define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
@@ -1778,6 +1780,9 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGER_TEMP_MAX:
 		val->intval = chg->charger_temp_max;
+		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		val->intval = !get_effective_result(chg->chg_disable_votable);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 		rc = smblib_get_prop_input_current_limited(chg, val);
@@ -1919,6 +1924,9 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 		rc = smblib_set_prop_system_temp_level(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		val->intval = !get_effective_result(chg->chg_disable_votable);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		rc = smblib_set_prop_batt_capacity(chg, val);
