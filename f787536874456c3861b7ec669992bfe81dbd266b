@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31f395eb_748b28f4",
+        "filename": "arch/arm64/configs/vendor/ext_config/pro1x.config",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2025-07-02T00:21:51Z",
+      "side": 1,
+      "message": "Missing \u003d ? This also doesn\u0027t look device specific",
+      "revId": "f787536874456c3861b7ec669992bfe81dbd266b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
