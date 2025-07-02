@@ -16,6 +16,24 @@
       "message": "Missing \u003d ? This also doesn\u0027t look device specific",
       "revId": "f787536874456c3861b7ec669992bfe81dbd266b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a7329db1_b115f3b0",
+        "filename": "arch/arm64/configs/vendor/ext_config/pro1x.config",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2025-07-02T00:25:34Z",
+      "side": 1,
+      "message": "Yeah, while it isn\u0027t, it is a change the ODM made.\n\nI am testing with it originally, then gonna thin it out (see the commit above this!)",
+      "parentUuid": "31f395eb_748b28f4",
+      "revId": "f787536874456c3861b7ec669992bfe81dbd266b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
