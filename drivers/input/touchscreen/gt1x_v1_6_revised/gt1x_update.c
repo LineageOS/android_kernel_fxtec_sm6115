@@ -806,8 +806,8 @@ int gt1x_hold_ss51_dsp(void)
         ret =  gt1x_i2c_read(0x4220, buffer, 1);   
     } while (retry-- && ret < 0);
 
-    if (ret < 0)
-        return ERROR;
+	if (ret < 0)
+		return ERROR;
 
 	//hold ss51_dsp
 	ret = __gt1x_hold_ss51_dsp_20();
