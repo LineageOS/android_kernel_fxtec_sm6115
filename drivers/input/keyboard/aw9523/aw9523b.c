@@ -243,12 +243,14 @@ static int aw9523b_read_reg(u8 addr, u8 *val)
     return ret;
 }
 #if 1
+#ifdef AW9523_DEBUG
 static u8 aw9523b_read_byte(u8 addr)
 {
     u8 val;
     aw9523b_read_reg(addr,&val);
     return val;
 }
+#endif
 #endif
 static int aw9523b_hw_reset(struct aw9523b_data *data)
 {
@@ -535,6 +537,7 @@ static irqreturn_t aw9523b_irq_handler(int irq, void *dev_id)
 }
 #if 1
 
+#ifdef AW9523_DEBUG
 static ssize_t aw9523b_show_chip_id(struct device *dev,
                     struct device_attribute *attr, char *buf)
 {
@@ -545,7 +548,9 @@ static ssize_t aw9523b_show_chip_id(struct device *dev,
 
     return res;
 }
+#endif
 
+#ifdef AW9523_DEBUG
 static ssize_t aw9523b_show_reg(struct device *dev,
                     struct device_attribute *attr, char *buf)
 {
@@ -567,6 +572,7 @@ static ssize_t aw9523b_show_reg(struct device *dev,
 
     return res;
 }
+#endif
 
 static ssize_t aw9523b_show_keymap(struct device *dev,
                 struct device_attribute *attr,
@@ -631,13 +637,14 @@ static ssize_t aw9523b_store_keymap(struct device *dev,
         return count;
 }
 
+#ifdef AW9523_DEBUG
 static DEVICE_ATTR(aw9523b_reg, (S_IRUGO | S_IWUSR | S_IWGRP),
             aw9523b_show_reg,
             NULL);
 static DEVICE_ATTR(aw9523b_chip_id, (S_IRUGO | S_IWUSR | S_IWGRP),
             aw9523b_show_chip_id,
             NULL);
-
+#endif
 static DEVICE_ATTR(keymap, (S_IRUGO | S_IWUSR | S_IWGRP),
             aw9523b_show_keymap,
             aw9523b_store_keymap);
