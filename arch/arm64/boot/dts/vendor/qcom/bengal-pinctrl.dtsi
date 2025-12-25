@@ -1324,7 +1324,7 @@
             };
         };
 
-        buttom_backlight_default: buttom_backlight_default {
+        keyboard_backlight_default: keyboard_backlight_default {
             mux {
                 pins = "gpio103";
                 function = "gpio";
