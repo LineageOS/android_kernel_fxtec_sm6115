@@ -206,10 +206,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&buttom_backlight_default>;
 
-		button-backlight {
-			label = "button-backlight";
+		keyboard-backlight {
+			label = "keyboard-backlight";
 			gpios = <&tlmm 103 0x00>;
-			linux,default-trigger = "button-backlight";
+			linux,default-trigger = "keyboard-backlight";
 		};
 	};
 
